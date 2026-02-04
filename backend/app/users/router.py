@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_db, get_current_user
-from app.users.schemas import UserPublicSchema
+from app.users.schemas import UserPublicSchema, UserUpdateSchema
 from app.users.services import follow, unfollow, get_followers, get_following
 
 
@@ -14,31 +13,26 @@ def me(current_user=Depends(get_current_user)):
 
 @router.patch("/me", response_model=UserPublicSchema)
 def update_me(
-    data: UserPublicSchema,
+    data: UserUpdateSchema,
     current_user=Depends(get_current_user),
     db=Depends(get_db),
 ):
-    user = db.query(current_user.__class__).filter(current_user.__class__.id == current_user.id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     # Update fields
     for field, value in data.dict(exclude_unset=True).items():
-        setattr(user, field, value)
+        setattr(current_user, field, value)
 
-    db.add(user)
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(current_user)
+    return current_user
 
-@router.get("/{user_id}/follow", status_code=204)
+@router.post("/{user_id}/follow", status_code=204)
 def follow_user(
     user_id: int,
     current_user=Depends(get_current_user),
     db=Depends(get_db),
 ):
     follow(
-        user_id=user_id,
+        target_user_id=user_id,
         current_user=current_user,
         db=db,
     )
@@ -51,7 +45,7 @@ def unfollow_user(
     db=Depends(get_db),
 ):
     unfollow(
-        user_id=user_id,
+        target_user_id=user_id,
         current_user=current_user,
         db=db,
     )

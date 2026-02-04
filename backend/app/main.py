@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request, Depends
+import json
+from fastapi import FastAPI, Request, Depends, WebSocket, WebSocketDisconnect, Body, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -22,6 +23,30 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(videos_router)
 
+class WebsocketBroadcaster:
+    def __init__(self) -> None:
+        self._connections: set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        self._connections.add(websocket)
+
+    def disconnect(self, websocket: WebSocket) -> None:
+        self._connections.discard(websocket)
+
+    async def broadcast(self, message: str) -> None:
+        if not self._connections:
+            return
+        stale: list[WebSocket] = []
+        for ws in self._connections:
+            try:
+                await ws.send_text(message)
+            except Exception:
+                stale.append(ws)
+        for ws in stale:
+            self._connections.discard(ws)
+
+broadcaster = WebsocketBroadcaster()
 
 @app.on_event("startup")
 def on_startup():
@@ -38,3 +63,25 @@ async def home(request: Request):
         "index.html", 
         {"request": request, "google_auth_url": google_auth_url}
     )
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await broadcaster.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        broadcaster.disconnect(websocket)
+    except Exception:
+        broadcaster.disconnect(websocket)
+
+
+@app.post("/ws/notify")
+async def websocket_notify(payload: dict = Body(...)):
+    try:
+        message = json.dumps(payload)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    await broadcaster.broadcast(message)
+    return {"ok": True}

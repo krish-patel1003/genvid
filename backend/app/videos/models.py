@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum, DateTime
+from datetime import datetime, timezone
 from app.core.db import Base
 from app.videos.enums import VideoStatusEnum
-from datetime import datetime, timezone
+
 
 class Video(Base):
     __tablename__ = "videos"
@@ -9,10 +10,47 @@ class Video(Base):
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(ForeignKey("users.id"), nullable=False, index=True)
 
-    status = Column(Enum(VideoStatusEnum), nullable=False, default=VideoStatusEnum.DRAFT)
-
     caption = Column(Text, nullable=True)
     video_url = Column(String, nullable=True)
     thumbnail_url = Column(String, nullable=True)
 
-    created_at = Column(String, nullable=False, default=datetime.now(timezone.utc).isoformat())
+    status = Column(
+        Enum("DRAFT", "PUBLISHED", name="video_publish_status"),
+        nullable=False,
+        default="DRAFT",
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class VideoGenerationObject(Base):
+    __tablename__ = "video_generation_objects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    prompt = Column(Text, nullable=False)
+    file_path = Column(String, nullable=True)
+
+    status = Column(
+        Enum(VideoStatusEnum),
+        nullable=False,
+        default=VideoStatusEnum.DRAFT,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+

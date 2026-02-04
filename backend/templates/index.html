@@ -8,5 +8,61 @@
 <body>
     <h1>FastAPI Google Sign-In</h1>
     <a href="{{ google_auth_url }}">Sign in with Google</a>
+
+    <hr />
+
+    <div id="ws-status">Connecting to notifications...</div>
+    <ul id="ws-events"></ul>
+
+    <script>
+        const statusEl = document.getElementById("ws-status");
+        const eventsEl = document.getElementById("ws-events");
+
+        function appendEvent(text, isJson) {
+            const li = document.createElement("li");
+            if (isJson) {
+                const pre = document.createElement("pre");
+                pre.textContent = text;
+                li.appendChild(pre);
+            } else {
+                li.textContent = text;
+            }
+            eventsEl.prepend(li);
+        }
+
+        function connectWs() {
+            const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+            const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                statusEl.textContent = "Connected to notifications";
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (payload?.type === "video_generation") {
+                        const data = payload.data || {};
+                        appendEvent(JSON.stringify(data, null, 2), true);
+                    } else {
+                        appendEvent(event.data);
+                    }
+                } catch {
+                    appendEvent(event.data);
+                }
+            };
+
+            ws.onclose = () => {
+                statusEl.textContent = "Disconnected. Retrying...";
+                setTimeout(connectWs, 1000);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+            };
+        }
+
+        connectWs();
+    </script>
 </body>
 </html>

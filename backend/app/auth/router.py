@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from core.dependencies import get_db, get_current_user
-from auth.schemas import SignupSchema, TokenSchema, UserPublicSchema
-from auth.models import User, OAuthAccount
-from auth.password import hash_password, verify_password
-from auth.jwt import create_access_token
-from auth.google_oauth import google
+from app.core.dependencies import get_db, get_current_user
+from app.auth.schemas import SignupSchema, TokenSchema, UserPublicSchema
+from app.auth.models import User, OAuthAccount
+from app.auth.password import hash_password, verify_password
+from app.auth.jwt import create_access_token
+from app.auth.google_oauth import google
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

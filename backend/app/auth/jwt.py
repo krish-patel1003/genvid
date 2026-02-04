@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from typing import Optional
 
-from core.config import settings
+from app.core.config import settings
 
 
 def create_access_token(*, subject: str, expires_minutes: Optional[int] = None) -> str:

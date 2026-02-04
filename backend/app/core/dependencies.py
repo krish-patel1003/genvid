@@ -5,10 +5,10 @@ from jwt.exceptions import InvalidTokenError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from core.config import settings
-from core.db import SessionLocal
-from auth.models import User  
-from core.db import Base, engine
+from app.core.config import settings
+from app.core.db import SessionLocal
+from app.auth.models import User  
+from app.core.db import Base, engine
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")

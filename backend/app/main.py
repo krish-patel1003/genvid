@@ -4,9 +4,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException
 
-from core.config import settings
-from auth.router import router as auth_router
-from core.dependencies import create_db_and_tables
+from app.core.config import settings
+from app.auth.router import router as auth_router
+from app.core.dependencies import create_db_and_tables
 
 app = FastAPI()
 

@@ -1,13 +1,13 @@
-from datetime import datetime, timedelta
-from jose import jwt 
-from app.core.config import settings
+from datetime import datetime, timedelta, timezone
+import jwt
+from typing import Optional
 
-def create_access_token(user_id: str):
-
-    payload = {
-        "sub": str(user_id),
-        "exp": datetime.datetime.now(datetime.UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    }
+from core.config import settings
 
 
-
+def create_access_token(*, subject: str, expires_minutes: Optional[int] = None) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=expires_minutes if expires_minutes is not None else settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode = {"sub": subject, "exp": expire}
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)

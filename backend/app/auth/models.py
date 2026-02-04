@@ -1,6 +1,8 @@
-from app.core.db import Base
+from core.db import Base
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.schema import ForeignKey, UniqueConstraint
+
+from datetime import datetime, timezone
 
 
 class User(Base):
@@ -12,8 +14,8 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True) # required for OAuth
     profile_pic = Column(String, nullable=True)
-    created_at = Column(String, nullable=False)
-    updated_at = Column(String, nullable=False)
+    created_at = Column(String, nullable=False, default=datetime.now(timezone.utc).isoformat())
+    updated_at = Column(String, nullable=False, default=datetime.now(timezone.utc).isoformat(), onupdate=datetime.now(timezone.utc).isoformat())
 
 
 class OAuthAccount(Base):

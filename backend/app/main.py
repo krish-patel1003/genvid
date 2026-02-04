@@ -6,6 +6,7 @@ from starlette.exceptions import HTTPException
 
 from app.core.config import settings
 from app.auth.router import router as auth_router
+from app.users.router import router as users_router
 from app.core.dependencies import create_db_and_tables
 
 app = FastAPI()
@@ -17,6 +18,8 @@ app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(auth_router)
+app.include_router(users_router)
+
 
 @app.on_event("startup")
 def on_startup():

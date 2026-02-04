@@ -50,3 +50,8 @@ def get_current_user(
     if not user:
         raise credentials_exception
     return user
+
+
+def user_exists(user_id: int, db=Depends(get_db)) -> bool:
+    user = db.query(User).filter(User.id == user_id).first()
+    return user is not None

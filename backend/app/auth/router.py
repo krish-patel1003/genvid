@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.core.dependencies import get_db, get_current_user
-from app.auth.schemas import SignupSchema, TokenSchema, UserPublicSchema
+from app.core.dependencies import get_db
+from app.auth.schemas import SignupSchema, TokenSchema
 from app.auth.models import User, OAuthAccount
 from app.auth.password import hash_password, verify_password
 from app.auth.jwt import create_access_token
@@ -54,12 +54,6 @@ def login_for_access_token(
 
     access_token = create_access_token(subject=str(user.id))
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.get("/me", response_model=UserPublicSchema)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
-
 
 # ---------- Google OAuth (unchanged conceptually) ----------
 

@@ -7,13 +7,13 @@ class VideoUploadSchema(BaseModel):
 
 
 class VideoPublicSchema(BaseModel):
-    id: int
-    owner_id: int
-    status: str
+    id: Optional[int] = None
+    owner_id: Optional[int] = None
+    status: Optional[str] = None
     caption: Optional[str] = None
-    video_url: str
-    thumbnail_url: str
-    created_at: str
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    created_at: Optional[str] = None
 
     class Config:
         from_attributes = True  # pydantic v2

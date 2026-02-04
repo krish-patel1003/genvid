@@ -3,6 +3,27 @@ from fastapi import Depends, HTTPException
 from app.auth.models import User
 from app.users.models import Follow
 
+def update_user(
+    *,
+    user: User,
+    username: str = None,
+    bio: str = None,
+    profile_pic: str = None,
+    db,
+):
+    if username is not None:
+        user.username = username
+    
+    if bio is not None:
+        user.bio = bio
+    
+    if profile_pic is not None:
+        user.profile_pic = profile_pic
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 def follow(
     *,

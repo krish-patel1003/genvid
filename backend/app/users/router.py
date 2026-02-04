@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_db, get_current_user
 from app.users.schemas import UserPublicSchema, UserUpdateSchema
-from app.users.services import follow, unfollow, get_followers, get_following
+from app.users.services import update_user, follow, unfollow, get_followers, get_following
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -17,13 +17,14 @@ def update_me(
     current_user=Depends(get_current_user),
     db=Depends(get_db),
 ):
-    # Update fields
-    for field, value in data.dict(exclude_unset=True).items():
-        setattr(current_user, field, value)
-
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    updated_user = update_user(
+        user=current_user,
+        username=data.username,
+        bio=data.bio,
+        profile_pic=data.profile_pic,
+        db=db,
+    )
+    return updated_user
 
 @router.post("/{user_id}/follow", status_code=204)
 def follow_user(

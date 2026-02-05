@@ -25,6 +25,8 @@ def _map_video_to_feed_item(video: Video, db) -> FeedItemSchema:
         caption=video.caption,
         video_url=video.video_url,
         thumbnail_url=video.thumbnail_url,
+        likes_count=video.likes_count or 0,
+        comments_count=video.comments_count or 0,
         created_at=video.created_at.isoformat() if video.created_at else None,
     )
     return feed_item

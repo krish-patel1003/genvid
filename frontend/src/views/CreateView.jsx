@@ -4,6 +4,9 @@ export default function CreateView({
   messages,
   prompt,
   pendingApproval,
+  previewUrl,
+  generationId,
+  generationStatus,
   isAuthed,
   onPromptChange,
   onGenerate,
@@ -58,6 +61,42 @@ export default function CreateView({
           </button>
         </div>
       </div>
+
+      {(generationId || previewUrl) && (
+        <section className="preview-panel">
+          <div className="preview-header">
+            <div>
+              <h3>Generated preview</h3>
+              <p>
+                {generationId ? `Generation #${generationId}` : 'Generation'}{' '}
+                {generationStatus ? `· ${generationStatus}` : ''}
+              </p>
+            </div>
+            {pendingApproval && (
+              <div className="preview-actions">
+                <button type="button" onClick={() => onApprove(true)}>
+                  Publish now
+                </button>
+                <button type="button" onClick={() => onApprove(false)}>
+                  Not now
+                </button>
+              </div>
+            )}
+          </div>
+          {previewUrl ? (
+            <video
+              className="preview-video"
+              src={previewUrl}
+              controls
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <div className="preview-placeholder">Preview will appear here.</div>
+          )}
+        </section>
+      )}
     </main>
   );
 }

@@ -13,6 +13,16 @@ const buildMessage = (role, text) => ({
   text
 });
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
+const buildGeneratedVideoUrl = (filePath) => {
+  if (!filePath) return '';
+  const normalized = filePath.replace(/\\\\/g, '/');
+  const fileName = normalized.split('/').pop();
+  if (!fileName) return '';
+  return `${API_BASE}/generated/${fileName}`;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [token, setToken] = useState(() => localStorage.getItem('genvid_token') || '');
@@ -58,6 +68,11 @@ export default function App() {
     })),
   [feedItems, commentsByVideo]);
 
+  const previewUrl = useMemo(
+    () => buildGeneratedVideoUrl(latestGeneration?.file_path),
+    [latestGeneration]
+  );
+
   useEffect(() => {
     if (token) {
       localStorage.setItem('genvid_token', token);
@@ -74,6 +89,51 @@ export default function App() {
     }, 3500);
     return () => clearTimeout(timer);
   }, [notice, error]);
+
+  useEffect(() => {
+    const wsUrl = API_BASE
+      ? API_BASE.replace(/^http/, 'ws') + '/ws'
+      : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload?.type === 'video_generation') {
+          const data = payload.data || {};
+          setLatestGeneration((prev) => {
+            if (!prev || prev?.id === data.id) {
+              return { ...prev, ...data };
+            }
+            return prev;
+          });
+
+          if (data.status === 'READY') {
+            setPendingApproval(true);
+            setMessages((prev) => [
+              buildMessage('assistant', `Draft ready (id ${data.id}). Preview below. Publish now?`),
+              ...prev
+            ]);
+          } else if (data.status === 'FAILED') {
+            setPendingApproval(false);
+            setMessages((prev) => [
+              buildMessage('assistant', `Generation failed for id ${data.id}. Try again.`),
+              ...prev
+            ]);
+          }
+        }
+      } catch {
+        // ignore non-json messages
+      }
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -281,9 +341,9 @@ export default function App() {
     try {
       const generation = await api.createVideo(token, { prompt: trimmed });
       setLatestGeneration(generation);
-      setPendingApproval(true);
+      setPendingApproval(false);
       setMessages((prev) => [
-        buildMessage('assistant', `Draft queued (id ${generation.id}). Approve to publish when ready.`),
+        buildMessage('assistant', `Draft queued (id ${generation.id}). I'll notify you when it is ready.`),
         ...prev
       ]);
     } catch (err) {
@@ -329,6 +389,7 @@ export default function App() {
         buildMessage('assistant', 'Posting now. Your reel is live.'),
         ...prev
       ]);
+      setPendingApproval(false);
       loadFeed(token);
     } catch (err) {
       setMessages((prev) => [
@@ -388,6 +449,9 @@ export default function App() {
           messages={messages}
           prompt={prompt}
           pendingApproval={pendingApproval}
+          previewUrl={previewUrl}
+          generationId={latestGeneration?.id}
+          generationStatus={latestGeneration?.status}
           isAuthed={isAuthed}
           onPromptChange={setPrompt}
           onGenerate={handleGenerate}

@@ -488,6 +488,75 @@ body {
   cursor: pointer;
 }
 
+.preview-panel {
+  margin-top: 18px;
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+}
+
+.preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.preview-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-actions button {
+  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preview-actions button:first-child {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
+.preview-actions button:last-child {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.preview-video,
+.preview-placeholder {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  background: #000;
+  object-fit: cover;
+}
+
+.preview-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
 .profile-card {
   display: grid;
   gap: 16px;

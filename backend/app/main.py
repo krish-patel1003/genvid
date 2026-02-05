@@ -1,6 +1,8 @@
 import json
+from pathlib import Path
 from fastapi import FastAPI, Request, Depends, WebSocket, WebSocketDisconnect, Body, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException
@@ -32,6 +34,12 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory="templates")
+
+GENERATED_DIR = (
+    Path(__file__).resolve().parent.parent / "workers" / "video_generation" / "generated_videos"
+)
+GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/generated", StaticFiles(directory=str(GENERATED_DIR)), name="generated")
 
 app.include_router(auth_router)
 app.include_router(users_router)

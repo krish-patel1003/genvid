@@ -55,3 +55,11 @@ def get_current_user(
 def user_exists(user_id: int, db=Depends(get_db)) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None
+
+
+def get_google_cloud_client():
+    from google.cloud import storage
+
+    client = storage.Client.from_service_account_json(settings.GOOGLE_APPLICATION_CREDENTIALS)
+    print(client)
+    return client

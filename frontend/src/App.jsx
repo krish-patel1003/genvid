@@ -48,6 +48,8 @@ export default function App() {
   const [postedVideos, setPostedVideos] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
+  const [followedUsers, setFollowedUsers] = useState({});
+  const [ownerIdByVideo, setOwnerIdByVideo] = useState({});
 
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -57,6 +59,7 @@ export default function App() {
   const feedVideos = useMemo(() =>
     feedItems.map((item) => ({
       id: item.video_id,
+      ownerId: item.owner_id ?? ownerIdByVideo[item.video_id],
       userId: item.owner_username ? `@${item.owner_username}` : '@creator',
       caption: item.caption,
       src: item.video_url || '',
@@ -66,7 +69,7 @@ export default function App() {
       comments_count: item.comments_count ?? 0,
       comments: commentsByVideo[item.video_id] || []
     })),
-  [feedItems, commentsByVideo]);
+  [feedItems, commentsByVideo, ownerIdByVideo]);
 
   const previewUrl = useMemo(
     () => buildGeneratedVideoUrl(latestGeneration?.file_path),
@@ -142,6 +145,8 @@ export default function App() {
       setPostedVideos([]);
       setFollowers([]);
       setFollowing([]);
+      setFollowedUsers({});
+      setOwnerIdByVideo({});
       return;
     }
 
@@ -425,6 +430,52 @@ export default function App() {
     loadFollowing();
   }, [activeTab, isAuthed, loadFollowers, loadFollowing]);
 
+  const resolveOwnerId = useCallback(async (videoId, fallbackOwnerId) => {
+    if (fallbackOwnerId) return fallbackOwnerId;
+    if (ownerIdByVideo[videoId]) return ownerIdByVideo[videoId];
+    try {
+      const data = await api.getVideo(videoId);
+      if (data?.owner_id) {
+        setOwnerIdByVideo((prev) => ({ ...prev, [videoId]: data.owner_id }));
+        return data.owner_id;
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+    return null;
+  }, [ownerIdByVideo]);
+
+  const handleFollowFromFeed = useCallback(async (video) => {
+    if (!token) {
+      setError('Sign in to follow creators.');
+      return;
+    }
+
+    const ownerId = await resolveOwnerId(video.id, video.ownerId);
+    if (!ownerId) {
+      setError('Unable to resolve creator.');
+      return;
+    }
+
+    if (user?.id && ownerId === user.id) {
+      setNotice('You cannot follow yourself.');
+      return;
+    }
+
+    const isFollowing = Boolean(followedUsers[ownerId]);
+    try {
+      if (isFollowing) {
+        await api.unfollowUser(token, ownerId);
+      } else {
+        await api.followUser(token, ownerId);
+      }
+      setFollowedUsers((prev) => ({ ...prev, [ownerId]: !isFollowing }));
+      setNotice(isFollowing ? 'Unfollowed.' : 'Following.');
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [token, user?.id, followedUsers, resolveOwnerId]);
+
   return (
     <div className="app">
       <Topbar />
@@ -440,6 +491,8 @@ export default function App() {
           onToggleReply={toggleReplyTarget}
           onDraftChange={updateDraft}
           onSubmitComment={submitComment}
+          onFollow={handleFollowFromFeed}
+          followedUsers={followedUsers}
           isAuthed={isAuthed}
         />
       )}

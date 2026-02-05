@@ -5,6 +5,7 @@ from app.videos.schemas import VideoUploadSchema, VideoPublicSchema, VideoGenera
 from app.videos.services import get_video_by_id, delete_video_record, get_videos_by_owner
 from app.videos.models import Video, VideoGenerationObject
 from workers.video_generation.tasks import generate_video_task
+from workers.video_generation.upload_publish_video import upload_and_publish_video
 from app.videos.enums import VideoStatusEnum
 
 router = APIRouter(prefix="/videos", tags=["videos"])
@@ -31,7 +32,7 @@ def create_video_generation_request(
 
 
 
-@router.post("/generation/{generation_id}/publish", response_model=VideoPublicSchema)
+@router.post("/generation/{generation_id}/publish", status_code=202)
 def publish_generated_video(
     generation_id: int,
     current_user=Depends(get_current_user),
@@ -43,22 +44,9 @@ def publish_generated_video(
     if video_gen_obj.status != VideoStatusEnum.READY:
         raise HTTPException(status_code=400, detail="Video is not ready for publishing")
 
-    # video_url = upload_to_cloud_storage(video_gen_obj.file_path)  # Placeholder for actual upload logic
-    video_url = f"https://cloudstorage.example.com/{video_gen_obj.file_path.split('/')[-1]}" # Dummy URL
+    upload_and_publish_video.delay(generation_id = generation_id, current_user_id=current_user.id)
 
-    # Create Video record
-    video = Video(
-        owner_id=current_user.id,
-        caption=f"Generated Video: {current_user.id} - {video_gen_obj.file_path.split('/')[-1]}",
-        video_url=video_url,
-        status=VideoStatusEnum.PUBLISHED,
-    )
-
-    db.add(video)
-    db.commit()
-    db.refresh(video)
-
-    return video
+    return {"message": "Video publishing initiated."}
 
 
 @router.get("/{video_id}", response_model=VideoPublicSchema)

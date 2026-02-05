@@ -11,6 +11,8 @@ export default function FeedView({
   onToggleReply,
   onDraftChange,
   onSubmitComment,
+  onFollow,
+  followedUsers,
   isAuthed
 }) {
   const videoIds = useMemo(() => videos.map((video) => video.id), [videos]);
@@ -65,6 +67,8 @@ export default function FeedView({
           onToggleReply={(commentId) => onToggleReply(video.id, commentId)}
           onDraftChange={(value) => onDraftChange(video.id, value)}
           onSubmitComment={() => onSubmitComment(video.id)}
+          onFollow={() => onFollow(video)}
+          isFollowing={Boolean(video.ownerId && followedUsers?.[video.ownerId])}
           isAuthed={isAuthed}
         />
       ))}

@@ -7,6 +7,8 @@ export default function Reel({
   isCommentsOpen,
   onLike,
   onComments,
+  onFollow,
+  isFollowing,
   commentDraft,
   replyTarget,
   onToggleReply,
@@ -32,7 +34,17 @@ export default function Reel({
 
       <div className="overlay">
         <div className="caption-block">
-          <div className="user-id">{video.userId}</div>
+          <div className="caption-header">
+            <div className="user-id">{video.userId}</div>
+            <button
+              type="button"
+              className={`follow-btn ${isFollowing ? 'active' : ''}`}
+              onClick={onFollow}
+              disabled={!isAuthed}
+            >
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+          </div>
           <p className="caption">{video.caption || 'No caption'}</p>
         </div>
 

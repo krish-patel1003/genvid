@@ -5,7 +5,7 @@ celery_app = Celery(
     "video_generation_worker",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["workers.video_generation.tasks"],
+    include=["workers.video_generation.tasks", "workers.video_generation.upload_publish_video"],
 )
 
 celery_app.conf.update(

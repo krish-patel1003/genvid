@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.utils import generate_signed_url
 from app.auth.router import router as auth_router
 from app.users.router import router as users_router
 from app.videos.router import router as videos_router
@@ -75,6 +76,16 @@ broadcaster = WebsocketBroadcaster()
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    # from google.cloud import storage
+
+    # client = storage.Client.from_service_account_json(settings.GOOGLE_APPLICATION_CREDENTIALS)
+    # bucket = client.bucket("genvid_videos_dev_v1")
+    # blob = bucket.blob("test.txt")
+    # blob.upload_from_string("hello")
+    # url = generate_signed_url(client, "test.txt")
+    
+    # print(f"Generated signed URL on startup: {url}")
+
 
 @app.get("/")
 async def root():

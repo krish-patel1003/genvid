@@ -111,15 +111,15 @@ body {
 
 .reel {
   position: relative;
-  height: 100vh;
+  height: calc(100vh - var(--topbar-height) - var(--nav-height));
   scroll-snap-align: start;
   display: grid;
   place-items: center;
 }
 
 .reel-video {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: 0;
   box-shadow: var(--shadow);
@@ -127,8 +127,8 @@ body {
 }
 
 .reel-placeholder {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   border-radius: 0;
   display: grid;
   place-items: center;
@@ -948,7 +948,8 @@ body {
   .reel-video,
   .reel-placeholder {
     width: min(420px, 90vw);
-    height: 92vh;
+    height: 100%;
+    max-height: 92vh;
     border-radius: 28px;
   }
 

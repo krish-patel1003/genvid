@@ -7,12 +7,14 @@ export default function CreateView({
   previewUrl,
   generationId,
   generationStatus,
+  isLocked,
   isAuthed,
   onPromptChange,
   onGenerate,
   onApprove
 }) {
   const canSubmit = useMemo(() => prompt.trim().length > 0, [prompt]);
+  const isDisabled = !isAuthed || isLocked;
 
   return (
     <main className="create-view">
@@ -48,15 +50,21 @@ export default function CreateView({
         <div className="chat-input">
           <input
             type="text"
-            placeholder={isAuthed ? 'Describe your video...' : 'Sign in to generate'}
+            placeholder={
+              !isAuthed
+                ? 'Sign in to generate'
+                : isLocked
+                  ? 'Finish the current generation to continue'
+                  : 'Describe your video...'
+            }
             value={prompt}
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') onGenerate();
+              if (event.key === 'Enter' && !isDisabled) onGenerate();
             }}
-            disabled={!isAuthed}
+            disabled={isDisabled}
           />
-          <button type="button" onClick={onGenerate} disabled={!isAuthed || !canSubmit}>
+          <button type="button" onClick={onGenerate} disabled={isDisabled || !canSubmit}>
             Generate
           </button>
         </div>

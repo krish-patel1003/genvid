@@ -6,9 +6,9 @@ export default function ProfileView({
   postedVideos,
   followers,
   following,
+  creatorIndex = [],
   onFetchFollowers,
   onFetchFollowing,
-  onLogout,
   authMode,
   onAuthModeChange,
   authForm,
@@ -18,6 +18,9 @@ export default function ProfileView({
   authError
 }) {
   const [openList, setOpenList] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCreator, setSelectedCreator] = useState(null);
+  const [activeVideoSrc, setActiveVideoSrc] = useState('');
 
   const handleOpenList = (type) => {
     setOpenList(type);
@@ -89,6 +92,12 @@ export default function ProfileView({
   const pfpSrc = user?.profile_pic || '';
   const username = user?.username ? `@${user.username}` : '@creator';
   const bio = user?.bio || 'No Bio';
+  const normalizedSearch = searchTerm.trim().replace(/^@/, '').toLowerCase();
+  const searchResults = normalizedSearch
+    ? creatorIndex.filter((creator) =>
+        creator.username.toLowerCase().includes(normalizedSearch)
+      )
+    : [];
 
   return (
     <main className="profile-view">
@@ -114,6 +123,29 @@ export default function ProfileView({
         </div>
       </section>
 
+      <section className="profile-search">
+        <div className="grid-header">Find creators</div>
+        <div className="search-row">
+          <input
+            type="text"
+            placeholder="Search by username"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </div>
+        {searchResults.length > 0 && (
+          <ul className="search-results">
+            {searchResults.map((creator) => (
+              <li key={creator.username}>
+                <button type="button" onClick={() => setSelectedCreator(creator)}>
+                  @{creator.username}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="profile-grid">
         <div className="grid-header">Your Reels</div>
         <div className="grid-content">
@@ -130,6 +162,7 @@ export default function ProfileView({
                 loop
                 playsInline
                 preload="metadata"
+                onClick={() => setActiveVideoSrc(video.src)}
               />
             ) : (
               <div key={video.id} className="grid-placeholder">Video</div>
@@ -137,10 +170,6 @@ export default function ProfileView({
           ))}
         </div>
       </section>
-
-      <div className="auth-actions" style={{ marginTop: '16px' }}>
-        <button type="button" onClick={onLogout}>Log out</button>
-      </div>
 
       {openList && (
         <div className="modal-backdrop" onClick={() => setOpenList(null)}>
@@ -158,6 +187,48 @@ export default function ProfileView({
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {selectedCreator && (
+        <div className="modal-backdrop" onClick={() => setSelectedCreator(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>@{selectedCreator.username}</h3>
+              <button type="button" onClick={() => setSelectedCreator(null)}>
+                Close
+              </button>
+            </div>
+            <div className="grid-content">
+              {selectedCreator.videos.length === 0 && (
+                <div className="grid-placeholder">No videos found</div>
+              )}
+              {selectedCreator.videos.map((video) => (
+                video.src ? (
+                  <video
+                    key={video.id}
+                    className="grid-video"
+                    src={video.src}
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    onClick={() => setActiveVideoSrc(video.src)}
+                  />
+                ) : (
+                  <div key={video.id} className="grid-placeholder">Video</div>
+                )
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeVideoSrc && (
+        <div className="modal-backdrop" onClick={() => setActiveVideoSrc('')}>
+          <div className="video-modal" onClick={(event) => event.stopPropagation()}>
+            <video src={activeVideoSrc} controls autoPlay playsInline />
           </div>
         </div>
       )}

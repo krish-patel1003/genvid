@@ -55,26 +55,71 @@ export default function App() {
   const [error, setError] = useState('');
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
+  const followedUsernames = useMemo(() => {
+    const names = new Set();
+    following.forEach((profile) => {
+      if (profile?.username) names.add(profile.username);
+    });
+    return names;
+  }, [following]);
 
   const feedVideos = useMemo(() =>
-    feedItems.map((item) => ({
-      id: item.video_id,
-      ownerId: item.owner_id ?? ownerIdByVideo[item.video_id],
-      userId: item.owner_username ? `@${item.owner_username}` : '@creator',
-      caption: item.caption,
-      src: item.video_url || '',
-      poster: item.thumbnail_url || '',
-      likes: item.likes_count ?? 0,
-      liked: item.is_liked_by_user ?? false,
-      comments_count: item.comments_count ?? 0,
-      comments: commentsByVideo[item.video_id] || []
-    })),
-  [feedItems, commentsByVideo, ownerIdByVideo]);
+    feedItems.map((item) => {
+      const ownerId = item.owner_id ?? ownerIdByVideo[item.video_id];
+      const ownerUsername = item.owner_username || '';
+      const isFollowing = ownerId
+        ? Boolean(followedUsers[ownerId])
+        : ownerUsername
+          ? followedUsernames.has(ownerUsername)
+          : false;
+
+      return {
+        id: item.video_id,
+        ownerId,
+        ownerUsername,
+        userId: ownerUsername ? `@${ownerUsername}` : '@creator',
+        caption: item.caption,
+        src: item.video_url || '',
+        poster: item.thumbnail_url || '',
+        likes: item.likes_count ?? 0,
+        liked: item.is_liked_by_user ?? false,
+        comments_count: item.comments_count ?? 0,
+        comments: commentsByVideo[item.video_id] || [],
+        isFollowing
+      };
+    }),
+  [feedItems, commentsByVideo, ownerIdByVideo, followedUsers, followedUsernames]);
+
+  const creatorIndex = useMemo(() => {
+    const map = new Map();
+    feedItems.forEach((item) => {
+      if (!item.owner_username) return;
+      const entry = map.get(item.owner_username) || {
+        username: item.owner_username,
+        videos: []
+      };
+      entry.videos.push({
+        id: item.video_id,
+        src: item.video_url || '',
+        poster: item.thumbnail_url || ''
+      });
+      map.set(item.owner_username, entry);
+    });
+    return Array.from(map.values());
+  }, [feedItems]);
 
   const previewUrl = useMemo(
     () => buildGeneratedVideoUrl(latestGeneration?.file_path),
     [latestGeneration]
   );
+
+  const generationLocked = useMemo(() => {
+    if (pendingApproval) return true;
+    if (!latestGeneration) return false;
+    const status = latestGeneration.status;
+    if (!status) return true;
+    return status !== 'READY' && status !== 'FAILED';
+  }, [latestGeneration, pendingApproval]);
 
   useEffect(() => {
     if (token) {
@@ -94,48 +139,94 @@ export default function App() {
   }, [notice, error]);
 
   useEffect(() => {
+    const map = {};
+    following.forEach((profile) => {
+      if (profile?.id) map[profile.id] = true;
+    });
+    setFollowedUsers(map);
+  }, [following]);
+
+  useEffect(() => {
+    let ws;
+    let reconnectTimer;
+    let heartbeatTimer;
+    let closed = false;
+
     const wsUrl = API_BASE
       ? API_BASE.replace(/^http/, 'ws') + '/ws'
       : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
-    const ws = new WebSocket(wsUrl);
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
 
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload?.type === 'video_generation') {
-          const data = payload.data || {};
-          setLatestGeneration((prev) => {
-            if (!prev || prev?.id === data.id) {
-              return { ...prev, ...data };
-            }
-            return prev;
-          });
-
-          if (data.status === 'READY') {
-            setPendingApproval(true);
-            setMessages((prev) => [
-              buildMessage('assistant', `Draft ready (id ${data.id}). Preview below. Publish now?`),
-              ...prev
-            ]);
-          } else if (data.status === 'FAILED') {
-            setPendingApproval(false);
-            setMessages((prev) => [
-              buildMessage('assistant', `Generation failed for id ${data.id}. Try again.`),
-              ...prev
-            ]);
+      ws.onopen = () => {
+        heartbeatTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send('ping');
           }
+        }, 15000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload?.type === 'video_generation') {
+            const data = payload.data || {};
+            setLatestGeneration((prev) => {
+              if (!prev || prev?.id === data.id) {
+                return { ...prev, ...data };
+              }
+              return prev;
+            });
+
+            if (data.status === 'READY') {
+              setPendingApproval(true);
+              setMessages((prev) => [
+                buildMessage('assistant', `Draft ready (id ${data.id}). Preview below. Publish now?`),
+                ...prev
+              ]);
+            } else if (data.status === 'FAILED') {
+              setPendingApproval(false);
+              setMessages((prev) => [
+                buildMessage('assistant', `Generation failed for id ${data.id}. Try again.`),
+                ...prev
+              ]);
+            }
+          }
+        } catch {
+          // ignore non-json messages
         }
-      } catch {
-        // ignore non-json messages
+      };
+
+      ws.onclose = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+        if (!closed) {
+          reconnectTimer = setTimeout(connect, 1200);
+        }
+      };
+
+      ws.onerror = () => {
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (ws && ws.readyState < WebSocket.CLOSING) {
+        ws.close();
       }
     };
-
-    ws.onerror = () => {
-      ws.close();
-    };
-
-    return () => ws.close();
   }, []);
 
   useEffect(() => {
@@ -154,6 +245,53 @@ export default function App() {
     loadFeed(token);
     loadMyVideos(token);
   }, [token]);
+
+  useEffect(() => {
+    const missing = feedItems
+      .filter((item) => !(item.owner_id || ownerIdByVideo[item.video_id]))
+      .map((item) => item.video_id);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+
+    const resolveOwners = async () => {
+      for (const videoId of missing) {
+        try {
+          const data = await api.getVideo(videoId);
+          if (!cancelled && data?.owner_id) {
+            setOwnerIdByVideo((prev) => ({ ...prev, [videoId]: data.owner_id }));
+          }
+        } catch (err) {
+          if (!cancelled) setError(err.message);
+        }
+      }
+    };
+
+    resolveOwners();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [feedItems, ownerIdByVideo]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchFollows = async () => {
+      try {
+        const [followersData, followingData] = await Promise.all([
+          api.getFollowers(user.id),
+          api.getFollowing(user.id)
+        ]);
+        setFollowers(followersData || []);
+        setFollowing(followingData || []);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchFollows();
+  }, [user?.id]);
 
   async function loadUser(authToken) {
     try {
@@ -329,6 +467,7 @@ export default function App() {
   }
 
   async function handleGenerate() {
+    if (generationLocked) return;
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
@@ -466,8 +605,15 @@ export default function App() {
     try {
       if (isFollowing) {
         await api.unfollowUser(token, ownerId);
+        setFollowing((prev) => prev.filter((profile) => profile.id !== ownerId));
       } else {
         await api.followUser(token, ownerId);
+        const username = video.ownerUsername || video.userId?.replace('@', '') || `user-${ownerId}`;
+        setFollowing((prev) =>
+          prev.some((profile) => profile.id === ownerId)
+            ? prev
+            : [...prev, { id: ownerId, username }]
+        );
       }
       setFollowedUsers((prev) => ({ ...prev, [ownerId]: !isFollowing }));
       setNotice(isFollowing ? 'Unfollowed.' : 'Following.');
@@ -478,7 +624,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Topbar />
+      <Topbar isAuthed={isAuthed} onLogout={handleLogout} />
 
       {activeTab === 'feed' && (
         <FeedView
@@ -492,7 +638,6 @@ export default function App() {
           onDraftChange={updateDraft}
           onSubmitComment={submitComment}
           onFollow={handleFollowFromFeed}
-          followedUsers={followedUsers}
           isAuthed={isAuthed}
         />
       )}
@@ -505,6 +650,7 @@ export default function App() {
           previewUrl={previewUrl}
           generationId={latestGeneration?.id}
           generationStatus={latestGeneration?.status}
+          isLocked={generationLocked}
           isAuthed={isAuthed}
           onPromptChange={setPrompt}
           onGenerate={handleGenerate}
@@ -519,9 +665,9 @@ export default function App() {
           postedVideos={postedVideos}
           followers={followers}
           following={following}
+          creatorIndex={creatorIndex}
           onFetchFollowers={loadFollowers}
           onFetchFollowing={loadFollowing}
-          onLogout={handleLogout}
           authMode={authMode}
           onAuthModeChange={setAuthMode}
           authForm={authForm}

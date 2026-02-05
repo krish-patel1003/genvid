@@ -12,7 +12,6 @@ export default function FeedView({
   onDraftChange,
   onSubmitComment,
   onFollow,
-  followedUsers,
   isAuthed
 }) {
   const videoIds = useMemo(() => videos.map((video) => video.id), [videos]);
@@ -68,7 +67,7 @@ export default function FeedView({
           onDraftChange={(value) => onDraftChange(video.id, value)}
           onSubmitComment={() => onSubmitComment(video.id)}
           onFollow={() => onFollow(video)}
-          isFollowing={Boolean(video.ownerId && followedUsers?.[video.ownerId])}
+          isFollowing={video.isFollowing}
           isAuthed={isAuthed}
         />
       ))}

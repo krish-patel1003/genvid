@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BottomNav from './components/BottomNav.jsx';
 import Topbar from './components/Topbar.jsx';
 import FeedView from './views/FeedView.jsx';
 import CreateView from './views/CreateView.jsx';
 import ProfileView from './views/ProfileView.jsx';
-import { api, googleLoginUrl } from './services/api.js';
+import { api, googleLoginUrl, uploadProfilePic } from './services/api.js';
 import { addNestedComment, buildCommentTree } from './utils/comments.js';
 
 const buildMessage = (role, text) => ({
@@ -30,6 +30,12 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', username: '', password: '' });
   const [authError, setAuthError] = useState('');
+  const [profileForm, setProfileForm] = useState({ username: '', bio: '' });
+  const [profilePicFile, setProfilePicFile] = useState(null);
+  const [profilePicPreview, setProfilePicPreview] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileUploading, setProfileUploading] = useState(false);
+  const profilePreviewRef = useRef(null);
 
   const [feedItems, setFeedItems] = useState([]);
   const [feedLoading, setFeedLoading] = useState(false);
@@ -82,7 +88,7 @@ export default function App() {
         src: item.video_url || '',
         poster: item.thumbnail_url || '',
         likes: item.likes_count ?? 0,
-        liked: item.is_liked_by_user ?? false,
+        liked: Boolean(item.is_liked_by_user),
         comments_count: item.comments_count ?? 0,
         comments: commentsByVideo[item.video_id] || [],
         isFollowing
@@ -137,6 +143,14 @@ export default function App() {
     }, 3500);
     return () => clearTimeout(timer);
   }, [notice, error]);
+
+  useEffect(() => {
+    return () => {
+      if (profilePreviewRef.current) {
+        URL.revokeObjectURL(profilePreviewRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const map = {};
@@ -297,6 +311,13 @@ export default function App() {
     try {
       const data = await api.me(authToken);
       setUser(data);
+      setProfileForm({
+        username: data?.username || '',
+        bio: data?.bio || ''
+      });
+      if (!profilePicFile) {
+        setProfilePicPreview(data?.profile_pic || '');
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -307,7 +328,13 @@ export default function App() {
     setFeedLoading(true);
     try {
       const data = await api.getFeed(authToken);
-      setFeedItems(data?.items || []);
+      const normalized = (data?.items || []).map((item) => ({
+        ...item,
+        likes_count: item.likes_count ?? 0,
+        comments_count: item.comments_count ?? 0,
+        is_liked_by_user: Boolean(item.is_liked_by_user)
+      }));
+      setFeedItems(normalized);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -358,11 +385,71 @@ export default function App() {
   function handleLogout() {
     setToken('');
     setUser(null);
+    setProfileForm({ username: '', bio: '' });
+    setProfilePicFile(null);
+    setProfilePicPreview('');
     setNotice('Logged out.');
   }
 
   function updateAuthForm(next) {
     setAuthForm((prev) => ({ ...prev, ...next }));
+  }
+
+  function updateProfileForm(next) {
+    setProfileForm((prev) => ({ ...prev, ...next }));
+  }
+
+  function handleProfileFileSelect(file) {
+    if (!file) return;
+    if (profilePreviewRef.current) {
+      URL.revokeObjectURL(profilePreviewRef.current);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    profilePreviewRef.current = previewUrl;
+    setProfilePicPreview(previewUrl);
+    setProfilePicFile(file);
+  }
+
+  async function handleProfileSave() {
+    if (!token) return;
+    setProfileSaving(true);
+    try {
+      const payload = {
+        username: profileForm.username || null,
+        bio: profileForm.bio || null
+      };
+      const data = await api.updateMe(token, payload);
+      setUser(data);
+      setProfileForm({
+        username: data?.username || '',
+        bio: data?.bio || ''
+      });
+      setNotice('Profile updated.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function handleProfileUpload() {
+    if (!token || !profilePicFile) return;
+    setProfileUploading(true);
+    try {
+      const data = await uploadProfilePic(token, profilePicFile);
+      setUser(data);
+      setProfilePicFile(null);
+      if (profilePreviewRef.current) {
+        URL.revokeObjectURL(profilePreviewRef.current);
+        profilePreviewRef.current = null;
+      }
+      setProfilePicPreview(data?.profile_pic || '');
+      setNotice('Profile photo updated.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProfileUploading(false);
+    }
   }
 
   function updateDraft(videoId, value) {
@@ -380,7 +467,7 @@ export default function App() {
     }
     const item = feedItems.find((entry) => entry.video_id === videoId);
     if (!item) return;
-    const liked = item.is_liked_by_user;
+    const liked = Boolean(item.is_liked_by_user);
 
     setFeedItems((prev) =>
       prev.map((entry) =>
@@ -388,7 +475,7 @@ export default function App() {
           ? {
               ...entry,
               is_liked_by_user: !liked,
-              likes_count: Math.max(0, (entry.likes_count || 0) + (liked ? -1 : 1))
+              likes_count: Math.max(0, (entry.likes_count ?? 0) + (liked ? -1 : 1))
             }
           : entry
       )
@@ -666,8 +753,16 @@ export default function App() {
           followers={followers}
           following={following}
           creatorIndex={creatorIndex}
+          profileForm={profileForm}
+          profilePicPreview={profilePicPreview}
+          profileSaving={profileSaving}
+          profileUploading={profileUploading}
           onFetchFollowers={loadFollowers}
           onFetchFollowing={loadFollowing}
+          onProfileChange={updateProfileForm}
+          onProfileSave={handleProfileSave}
+          onProfileFileSelect={handleProfileFileSelect}
+          onProfileUpload={handleProfileUpload}
           authMode={authMode}
           onAuthModeChange={setAuthMode}
           authForm={authForm}

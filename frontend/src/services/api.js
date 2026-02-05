@@ -71,3 +71,31 @@ export const api = {
 export function googleLoginUrl() {
   return `${API_BASE}/auth/google/login`;
 }
+
+export async function uploadProfilePic(token, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}/users/me/profile-pic`, {
+    method: "POST",
+    headers,
+    body: formData
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const detail = typeof data === "string" ? data : data?.detail;
+    throw new Error(detail || `Request failed (${response.status})`);
+  }
+
+  return data;
+}

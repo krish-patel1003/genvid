@@ -7,8 +7,16 @@ export default function ProfileView({
   followers,
   following,
   creatorIndex = [],
+  profileForm = { username: '', bio: '' },
+  profilePicPreview = '',
+  profileSaving = false,
+  profileUploading = false,
   onFetchFollowers,
   onFetchFollowing,
+  onProfileChange,
+  onProfileSave,
+  onProfileFileSelect,
+  onProfileUpload,
   authMode,
   onAuthModeChange,
   authForm,
@@ -21,6 +29,7 @@ export default function ProfileView({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCreator, setSelectedCreator] = useState(null);
   const [activeVideoSrc, setActiveVideoSrc] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleOpenList = (type) => {
     setOpenList(type);
@@ -89,7 +98,7 @@ export default function ProfileView({
     );
   }
 
-  const pfpSrc = user?.profile_pic || '';
+  const pfpSrc = profilePicPreview || user?.profile_pic || '';
   const username = user?.username ? `@${user.username}` : '@creator';
   const bio = user?.bio || 'No Bio';
   const normalizedSearch = searchTerm.trim().replace(/^@/, '').toLowerCase();
@@ -121,7 +130,49 @@ export default function ProfileView({
             </button>
           </div>
         </div>
+        <button type="button" className="edit-toggle" onClick={() => setEditOpen((prev) => !prev)}>
+          {editOpen ? 'Close edit' : 'Edit profile'}
+        </button>
       </section>
+
+      {editOpen && (
+        <section className="profile-edit">
+          <div className="grid-header">Edit profile</div>
+          <div className="edit-grid">
+            <label>
+              Username
+              <input
+                type="text"
+                value={profileForm.username}
+                onChange={(event) => onProfileChange({ username: event.target.value })}
+              />
+            </label>
+            <label>
+              Bio
+              <input
+                type="text"
+                value={profileForm.bio}
+                onChange={(event) => onProfileChange({ bio: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="edit-actions">
+            <button type="button" onClick={onProfileSave} disabled={profileSaving}>
+              {profileSaving ? 'Saving...' : 'Save profile'}
+            </button>
+          </div>
+          <div className="edit-upload">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => onProfileFileSelect(event.target.files?.[0])}
+            />
+            <button type="button" onClick={onProfileUpload} disabled={profileUploading}>
+              {profileUploading ? 'Uploading...' : 'Upload photo'}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="profile-search">
         <div className="grid-header">Find creators</div>

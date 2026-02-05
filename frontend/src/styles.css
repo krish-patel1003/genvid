@@ -634,6 +634,7 @@ body {
   border-radius: 22px;
   padding: 16px;
   box-shadow: var(--shadow);
+  position: relative;
 }
 
 .profile-pfp {
@@ -670,6 +671,20 @@ body {
   display: grid;
   gap: 4px;
   cursor: pointer;
+}
+
+.edit-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .stat-number {
@@ -737,6 +752,59 @@ body {
   padding: 14px;
   display: grid;
   gap: 10px;
+}
+
+.profile-edit {
+  margin-top: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.edit-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-edit label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.profile-edit input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.edit-actions button,
+.edit-upload button {
+  border: none;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
+.edit-upload {
+  display: grid;
+  gap: 10px;
+}
+
+.edit-upload input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
 }
 
 .search-row input {

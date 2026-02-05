@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 
 from app.core.dependencies import get_db, get_current_user
 from app.users.schemas import UserPublicSchema, UserUpdateSchema
-from app.users.services import update_user, follow, unfollow, get_followers, get_following
+from app.users.services import update_user, follow, unfollow, get_followers, get_following, upload_profile_picture
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -22,6 +22,19 @@ def update_me(
         username=data.username,
         bio=data.bio,
         profile_pic=data.profile_pic,
+        db=db,
+    )
+    return updated_user
+
+@router.post("/me/profile-pic", response_model=UserPublicSchema)
+def update_profile_pic(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    updated_user = upload_profile_picture(
+        user=current_user,
+        file=file,
         db=db,
     )
     return updated_user

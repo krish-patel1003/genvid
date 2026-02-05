@@ -1,12 +1,10 @@
-from sqlalchemy.orm import joinedload
-
 from app.videos.models import Video
 from app.auth.models import User
-from app.users.models import Follow
 from app.feed.schema import FeedItemSchema, FeedSchema
+from app.user_interactions.models import Like
 
 
-def _map_video_to_feed_item(video: Video, db) -> FeedItemSchema:
+def _map_video_to_feed_item(video: Video, db, is_liked_by_user: bool = False) -> FeedItemSchema:
     '''
     Docstring for _map_video_to_feed_item
     
@@ -27,21 +25,23 @@ def _map_video_to_feed_item(video: Video, db) -> FeedItemSchema:
         thumbnail_url=video.thumbnail_url,
         likes_count=video.likes_count or 0,
         comments_count=video.comments_count or 0,
+        is_liked_by_user=is_liked_by_user,
         created_at=video.created_at.isoformat() if video.created_at else None,
     )
     return feed_item
 
+def _fetch_likes_of_current_user(current_user: User, video_ids: list[int], db) -> set[int]:
+    if not video_ids:
+        return set()
+    return {
+        row[0]
+        for row in db.query(Like.video_id)
+        .filter(Like.user_id == current_user.id, Like.video_id.in_(video_ids))
+        .all()
+    }
+
 def get_feed_videos(current_user: User, db, limit: int = 10, offset: int = 0) -> list[Video]:
     '''
-    Docstring for get_feed_videos
-    
-    :param db: Description
-    :param limit: Description
-    :type limit: int
-    :param offset: Description
-    :type offset: int
-    :return: Description
-    :rtype: list[Video]
 
     SELECT videos.*
     FROM videos
@@ -86,16 +86,19 @@ def get_feed_videos(current_user: User, db, limit: int = 10, offset: int = 0) ->
     #     feed.items.append(feedItem)
 
     # return all videos on the platform as feed for now
-    videos = (
+    videos_query = (
         db.query(Video)
         .filter(Video.status == 'PUBLISHED')
         .order_by(Video.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
+    video_list = videos_query.all()
     feed = FeedSchema(items=[])
-    for video in videos:
-        feedItem = _map_video_to_feed_item(video, db)
+    liked_video_ids = _fetch_likes_of_current_user(current_user, [video.id for video in video_list], db)
+    for video in video_list:
+        is_liked_by_user = video.id in liked_video_ids
+        feedItem = _map_video_to_feed_item(video, db, is_liked_by_user=is_liked_by_user)
         feed.items.append(feedItem)
 
     return feed

@@ -1,7 +1,15 @@
-from fastapi import Depends, HTTPException
+import os
+import shutil
+import tempfile
+from uuid import uuid4
+from fastapi import Depends, HTTPException, UploadFile
 
 from app.auth.models import User
 from app.users.models import Follow
+from app.core.dependencies import get_google_cloud_client
+from app.core.utils import generate_signed_url
+
+BUCKET_NAME = "genvid_videos_dev_v1"
 
 def update_user(
     *,
@@ -20,6 +28,37 @@ def update_user(
     if profile_pic is not None:
         user.profile_pic = profile_pic
     
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def upload_profile_picture(
+    *,
+    user: User,
+    file: UploadFile,
+    db,
+) -> User:
+    suffix = os.path.splitext(file.filename or "")[1] or ".jpg"
+    blob_name = f"profile_pics/{user.id}/{uuid4().hex}{suffix}"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        client = get_google_cloud_client()
+        bucket = client.bucket(BUCKET_NAME)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_filename(tmp_path, content_type=file.content_type)
+        url = generate_signed_url(client, blob_name)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+    user.profile_pic = url
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -93,5 +132,4 @@ def get_following(user_id: int, db):
         Follow.follower_id == user_id
     ).all()
     return following
-
 

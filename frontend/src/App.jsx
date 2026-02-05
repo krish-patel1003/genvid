@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import BottomNav from './components/BottomNav.jsx';
 import Topbar from './components/Topbar.jsx';
 import FeedView from './views/FeedView.jsx';
@@ -338,7 +338,7 @@ export default function App() {
     }
   }
 
-  async function loadFollowers() {
+  const loadFollowers = useCallback(async () => {
     if (!user?.id) return;
     try {
       const data = await api.getFollowers(user.id);
@@ -346,9 +346,9 @@ export default function App() {
     } catch (err) {
       setError(err.message);
     }
-  }
+  }, [user?.id]);
 
-  async function loadFollowing() {
+  const loadFollowing = useCallback(async () => {
     if (!user?.id) return;
     try {
       const data = await api.getFollowing(user.id);
@@ -356,7 +356,13 @@ export default function App() {
     } catch (err) {
       setError(err.message);
     }
-  }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!isAuthed || activeTab !== 'profile') return;
+    loadFollowers();
+    loadFollowing();
+  }, [activeTab, isAuthed, loadFollowers, loadFollowing]);
 
   return (
     <div className="app">

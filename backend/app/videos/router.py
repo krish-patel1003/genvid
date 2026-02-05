@@ -49,7 +49,7 @@ def publish_generated_video(
     # Create Video record
     video = Video(
         owner_id=current_user.id,
-        caption="Generated Video",
+        caption=f"Generated Video: {current_user.id} - {video_gen_obj.file_path.split('/')[-1]}",
         video_url=video_url,
         status=VideoStatusEnum.PUBLISHED,
     )

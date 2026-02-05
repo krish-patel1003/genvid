@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.auth.router import router as auth_router
@@ -18,6 +19,17 @@ app = FastAPI()
 # Add SessionMiddleware to enable session support
 # Generate a random secret key for session encryption
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # React dev server
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 templates = Jinja2Templates(directory="templates")
 

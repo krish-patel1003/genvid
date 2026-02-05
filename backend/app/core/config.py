@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
     class Config:
-        env_file = "/Users/krish/Documents/projects/genvid/.env"
+        env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
     

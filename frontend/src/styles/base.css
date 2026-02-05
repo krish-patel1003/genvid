@@ -1,0 +1,38 @@
+:root {
+  --bg: #f6f3ee;
+  --bg-2: #efe9e1;
+  --card: #ffffff;
+  --ink: #1f1d1b;
+  --muted: #6e6a63;
+  --accent: #1f7a8c;
+  --accent-2: #f4b267;
+  --border: #e5ded4;
+  --danger: #c63d2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at top, var(--bg-2), var(--bg));
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: "Space Grotesk", "DM Sans", sans-serif;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+}
+
+button, input, textarea {
+  font-family: inherit;
+}

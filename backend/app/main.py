@@ -10,6 +10,7 @@ from app.auth.router import router as auth_router
 from app.users.router import router as users_router
 from app.videos.router import router as videos_router
 from app.feed.router import router as feed_router
+from app.user_interactions.router import router as user_interactions_router
 from app.core.dependencies import create_db_and_tables
 
 app = FastAPI()
@@ -24,6 +25,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(videos_router)
 app.include_router(feed_router)
+app.include_router(user_interactions_router)
 
 class WebsocketBroadcaster:
     def __init__(self) -> None:

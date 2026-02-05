@@ -8,9 +8,9 @@ class FeedItemSchema(BaseModel):
     caption: Optional[str] = None
     video_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
-    # likes_count: int
-    # comments_count: int
-    # is_liked_by_user: bool
+    likes_count: int = 0
+    comments_count: int = 0
+    is_liked_by_user: bool = False
     created_at: Optional[str] = None
 
     # @field_serializer("created_at")

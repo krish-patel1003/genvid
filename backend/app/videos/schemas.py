@@ -14,6 +14,8 @@ class VideoPublicSchema(BaseModel):
     caption: Optional[str] = None
     video_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    likes_count: Optional[int] = 0
+    comments_count: Optional[int] = 0
     created_at: Optional[datetime] = None
 
     @field_serializer("created_at")

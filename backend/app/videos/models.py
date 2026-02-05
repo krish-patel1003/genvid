@@ -20,6 +20,10 @@ class Video(Base):
         default="DRAFT",
     )
 
+    likes_count = Column(Integer, nullable=True, default=0)
+
+    comments_count = Column(Integer, nullable=True, default=0)
+
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

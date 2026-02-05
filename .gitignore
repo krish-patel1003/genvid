@@ -77,7 +77,6 @@ docker-compose.override.yml
 
 # Generated media
 media/
-videos/
 outputs/
 
 # Model artifacts

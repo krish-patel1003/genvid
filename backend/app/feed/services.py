@@ -51,34 +51,47 @@ def get_feed_videos(current_user: User, db, limit: int = 10, offset: int = 0) ->
     LIMIT 20;   
     '''
 
+    # videos = (
+    #     db.query(Video)
+    #     .join(Follow, Video.owner_id == Follow.followed_id)
+    #     .filter(Follow.follower_id == current_user.id)
+    #     .filter(Video.status == 'PUBLISHED')
+    #     .order_by(Video.created_at.desc())
+    #     .limit(limit)
+    #     .offset(offset)
+    # )
+
+    # if videos is None:
+    #     # return all videos if no followed users have published videos
+    #     videos = (
+    #         db.query(Video)
+    #         .filter(Video.status == 'PUBLISHED')
+    #         .order_by(Video.created_at.desc())
+    #         .limit(limit)
+    #         .offset(offset)
+    #     )
+
+    #     feed = FeedSchema(items=[])
+    #     for video in videos:
+    #         feedItem = _map_video_to_feed_item(video, db)
+    #         feed.items.append(feedItem)
+    #     return feed
+
+    # feed = FeedSchema(items=[])
+
+    # for video in videos:
+    #     feedItem = _map_video_to_feed_item(video, db)
+    #     feed.items.append(feedItem)
+
+    # return all videos on the platform as feed for now
     videos = (
         db.query(Video)
-        .join(Follow, Video.owner_id == Follow.followed_id)
-        .filter(Follow.follower_id == current_user.id)
         .filter(Video.status == 'PUBLISHED')
         .order_by(Video.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
-
-    if videos is None:
-        # return all videos if no followed users have published videos
-        videos = (
-            db.query(Video)
-            .filter(Video.status == 'PUBLISHED')
-            .order_by(Video.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-
-        feed = FeedSchema(items=[])
-        for video in videos:
-            feedItem = _map_video_to_feed_item(video, db)
-            feed.items.append(feedItem)
-        return feed
-
     feed = FeedSchema(items=[])
-
     for video in videos:
         feedItem = _map_video_to_feed_item(video, db)
         feed.items.append(feedItem)

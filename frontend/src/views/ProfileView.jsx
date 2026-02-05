@@ -88,7 +88,7 @@ export default function ProfileView({
 
   const pfpSrc = user?.profile_pic || '';
   const username = user?.username ? `@${user.username}` : '@creator';
-  const bio = user?.bio || 'Director of short-form stories.';
+  const bio = user?.bio || 'No Bio';
 
   return (
     <main className="profile-view">

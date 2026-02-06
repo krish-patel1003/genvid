@@ -1,0 +1,20 @@
+steps:
+  # Step 1: Build image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        'us-west2-docker.pkg.dev/$PROJECT_ID/genvid/genvid-api',
+        '.'
+      ]
+
+  # Step 2: Run Alembic migrations
+  - name: 'us-west2-docker.pkg.dev/$PROJECT_ID/genvid/genvid-api'
+    entrypoint: 'alembic'
+    args: ['upgrade', 'head']
+    env:
+      - 'DATABASE_URL=${_DATABASE_URL}'
+
+images:
+  - 'us-west2-docker.pkg.dev/$PROJECT_ID/genvid/genvid-api'

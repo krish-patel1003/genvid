@@ -1,18 +1,18 @@
 from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 class Settings(BaseSettings):
 
     # App
-    APP_NAME: str = "GenVid"
-    ENV: str = "development"
+    APP_NAME: str = "GenVid API"
+    ENV: str = "Production"
 
     # Database
-    DATABASE_URL: str = "sqlite:///./test.db"
+    DATABASE_URL: str
 
     # Security
     SECRET_KEY: str
     JWT_SECRET: str 
-    JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
     # OAuth
@@ -21,11 +21,10 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str
 
     # Celery
-    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
+    CELERY_BROKER_URL: str 
+    CELERY_RESULT_BACKEND: str 
 
-    # Google Cloud
-    GOOGLE_APPLICATION_CREDENTIALS: str = "/Users/krish/Documents/projects/genvid/backend/gen-lang-client-0368999212-9d9cf6cbc5ab.json"
+    # Frontend
     FRONTEND_URL: str 
 
     # ws
@@ -37,4 +36,6 @@ class Settings(BaseSettings):
         extra="ignore"
     
 
-settings = Settings()
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()

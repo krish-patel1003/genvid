@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.core.dependencies import get_db
-from src.core.config import settings
+from src.core.config import get_settings
 from src.auth.schemas import SignupSchema, TokenSchema
 from src.auth.models import User, OAuthAccount
 from src.auth.password import hash_password, verify_password
@@ -11,6 +11,7 @@ from src.auth.jwt import create_access_token
 from src.auth.google_oauth import google
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
 
 
 @router.post("/signup", response_model=TokenSchema)

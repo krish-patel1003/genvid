@@ -5,13 +5,14 @@ from jwt.exceptions import InvalidTokenError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from src.core.config import settings
+from src.core.config import get_settings
 from src.core.db import SessionLocal
 from src.auth.models import User  
 from src.core.db import Base, engine
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+settings = get_settings()
 
 
 def get_db():
@@ -21,8 +22,8 @@ def get_db():
     finally:
         db.close()
 
-def create_db_and_tables():
-    Base.metadata.create_all(bind=engine)
+# def create_db_and_tables():
+#     Base.metadata.create_all(bind=engine)
 
 def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
@@ -60,6 +61,6 @@ def user_exists(user_id: int, db=Depends(get_db)) -> bool:
 def get_google_cloud_client():
     from google.cloud import storage
 
-    client = storage.Client.from_service_account_json(settings.GOOGLE_APPLICATION_CREDENTIALS)
+    client = storage.Client()
     print(client)
     return client

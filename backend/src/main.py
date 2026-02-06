@@ -8,15 +8,16 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from src.core.config import settings
+from src.core.config import get_settings
 from src.core.utils import generate_signed_url
 from src.auth.router import router as auth_router
 from src.users.router import router as users_router
 from src.videos.router import router as videos_router
 from src.feed.router import router as feed_router
 from src.user_interactions.router import router as user_interactions_router
-from src.core.dependencies import create_db_and_tables
+# from src.core.dependencies import create_db_and_tables
 
+settings = get_settings()
 app = FastAPI()
 
 # Add SessionMiddleware to enable session support
@@ -76,9 +77,9 @@ class WebsocketBroadcaster:
 
 broadcaster = WebsocketBroadcaster()
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+# @app.on_event("startup")
+# def on_startup():
+#     create_db_and_tables()
 
 @app.get("/")
 async def root():

@@ -9,9 +9,10 @@ from workers.video_generation.db import SessionLocal
 from src.videos.models import VideoGenerationObject
 from src.videos.enums import VideoStatusEnum
 from src.videos.schemas import VideoGenerationObjectSchema
-from src.core.config import settings
+from src.core.config import get_settings
 
 logger = get_task_logger(__name__)
+settings = get_settings()
 
 @celery_app.task(
     bind=True,

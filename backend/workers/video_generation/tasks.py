@@ -6,9 +6,9 @@ from workers.video_generation.celery_app import celery_app
 from workers.video_generation.generator import generate_video
 from workers.video_generation.db import SessionLocal
 
-from app.videos.models import VideoGenerationObject
-from app.videos.enums import VideoStatusEnum
-from app.videos.schemas import VideoGenerationObjectSchema
+from src.videos.models import VideoGenerationObject
+from src.videos.enums import VideoStatusEnum
+from src.videos.schemas import VideoGenerationObjectSchema
 
 logger = get_task_logger(__name__)
 

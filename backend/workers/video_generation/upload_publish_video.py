@@ -3,11 +3,11 @@ from pathlib import Path
 from datetime import timedelta
 from fastapi import Depends
 
-from app.videos.models import Video, VideoGenerationObject, VideoStatusEnum
+from src.videos.models import Video, VideoGenerationObject, VideoStatusEnum
 from workers.video_generation.celery_app import celery_app
 from workers.video_generation.db import SessionLocal
-from app.core.dependencies import get_google_cloud_client
-from app.auth.models import User
+from src.core.dependencies import get_google_cloud_client
+from src.auth.models import User
 
 BUCKET_NAME = "genvid_videos_dev_v1"
 

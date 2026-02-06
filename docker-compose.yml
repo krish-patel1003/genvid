@@ -1,0 +1,51 @@
+services:
+  api:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: genvid-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: genvid-worker
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A workers.video_generation.celery_app worker -l info
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: genvid
+      POSTGRES_PASSWORD: genvid
+      POSTGRES_DB: genvid
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: genvid-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

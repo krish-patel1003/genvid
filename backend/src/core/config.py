@@ -25,12 +25,16 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
     # Google Cloud
-    GOOGLE_APPLICATION_CREDENTIALS: str
+    GOOGLE_APPLICATION_CREDENTIALS: str = "/Users/krish/Documents/projects/genvid/backend/gen-lang-client-0368999212-9d9cf6cbc5ab.json"
+    FRONTEND_URL: str 
+
+    # ws
+    WS_NOTIFY_URL: str
 
     class Config:
+        env_file = ".env"
         case_sensitive = True
         extra="ignore"
     
 
 settings = Settings()
-

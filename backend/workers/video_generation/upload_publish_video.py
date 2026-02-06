@@ -1,13 +1,15 @@
 from google.cloud import storage
 from pathlib import Path
 from datetime import timedelta
-from fastapi import Depends
+from celery.utils.log import get_task_logger
 
 from src.videos.models import Video, VideoGenerationObject, VideoStatusEnum
 from workers.video_generation.celery_app import celery_app
 from workers.video_generation.db import SessionLocal
 from src.core.dependencies import get_google_cloud_client
 from src.auth.models import User
+
+logger = get_task_logger(__name__)
 
 BUCKET_NAME = "genvid_videos_dev_v1"
 
@@ -38,12 +40,14 @@ def upload_and_publish_video(self, generation_id: int, current_user_id: int):
 
     try:
         gen = db.query(VideoGenerationObject).get(generation_id)
+        logger.info("publish task gen=%s status=%s", gen.id if gen else None, getattr(gen, "status", None))
         if not gen or gen.status != VideoStatusEnum.READY:
+            logger.info("publish task skip: gen missing or not READY")
             return
-
+        logger.info("Uploading %s to GCS as %s...", gen.file_path, blob_name)
         # Upload to GCS
         blob_name = f"videos/{gen.id}.mp4"
-
+        # print(f"Uploading {gen.file_path} to GCS as {blob_name}...")
         url = upload_to_object_storage(
             local_file_path=gen.file_path,
             destination_blob_name=blob_name,
@@ -59,8 +63,8 @@ def upload_and_publish_video(self, generation_id: int, current_user_id: int):
         gen.status = VideoStatusEnum.PUBLISHED
         db.commit()
 
-    except Exception:
-        print("Error during upload and publish")
+    except Exception as e:
+        logger.error("Error during upload and publish: %s", e)
         gen.status = VideoStatusEnum.FAILED
         db.commit()
         raise

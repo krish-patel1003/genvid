@@ -21,7 +21,7 @@ app = FastAPI()
 
 # Add SessionMiddleware to enable session support
 # Generate a random secret key for session encryption
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY, same_site="lax")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,12 +29,12 @@ app.add_middleware(
         "http://localhost:5173",  # React dev server
         "http://127.0.0.1:5173",
         "http://localhost:3000",
-        "http://0.0.0.0:3000/",
+        settings.FRONTEND_URL,
         "https://genvid.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -79,16 +79,6 @@ broadcaster = WebsocketBroadcaster()
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
-    # from google.cloud import storage
-
-    # client = storage.Client.from_service_account_json(settings.GOOGLE_APPLICATION_CREDENTIALS)
-    # bucket = client.bucket("genvid_videos_dev_v1")
-    # blob = bucket.blob("test.txt")
-    # blob.upload_from_string("hello")
-    # url = generate_signed_url(client, "test.txt")
-    
-    # print(f"Generated signed URL on startup: {url}")
-
 
 @app.get("/")
 async def root():

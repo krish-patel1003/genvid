@@ -136,6 +136,22 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('token');
+    const tabFromUrl = params.get('tab');
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+      if (tabFromUrl) {
+        setActiveTab(tabFromUrl);
+      }
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete('token');
+      nextUrl.searchParams.delete('tab');
+      window.history.replaceState({}, '', nextUrl.toString());
+    }
+  }, []);
+
+  useEffect(() => {
     if (!notice && !error) return undefined;
     const timer = setTimeout(() => {
       setNotice('');

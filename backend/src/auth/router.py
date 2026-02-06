@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.core.dependencies import get_db
+from src.core.config import settings
 from src.auth.schemas import SignupSchema, TokenSchema
 from src.auth.models import User, OAuthAccount
 from src.auth.password import hash_password, verify_password
@@ -63,7 +65,7 @@ async def google_login(request: Request):
     return await google.authorize_redirect(request, redirect_uri)
 
 
-@router.get("/google/callback", name="google_callback", response_model=TokenSchema)
+@router.get("/google/callback", name="google_callback")
 async def google_callback(request: Request, db=Depends(get_db)):
     token = await google.authorize_access_token(request)
 
@@ -98,4 +100,5 @@ async def google_callback(request: Request, db=Depends(get_db)):
     db.commit()
 
     jwt_token = create_access_token(subject=str(user.id))
-    return {"access_token": jwt_token, "token_type": "bearer"}
+    redirect_url = f"{settings.FRONTEND_URL}/?token={jwt_token}&tab=profile"
+    return RedirectResponse(url=redirect_url)

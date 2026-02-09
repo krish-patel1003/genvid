@@ -1,24 +1,38 @@
 from fastapi import FastAPI, Depends
 from typing import Annotated
 from functools import lru_cache
+import logging
 
-from . import config
-from .health import router as health_router
+from src import config
+from src.health import router as health_router
+from src.middleware import RequestIdMiddleware
+from src.logging import setup_logging
 
 
 @lru_cache
 def get_settings():
     return config.Settings()
 
-app = FastAPI(title=get_settings().APP_NAME)
+def create_app() -> FastAPI:
+    setup_logging()
 
-@app.get("/info")
-async def info(settings: Annotated[config.Settings, Depends(get_settings)]):
-    return {
-        "app_name": settings.APP_NAME,
-        "env": settings.ENV,
-        "debug": settings.DEBUG
-    }
+    logger = logging.getLogger(__name__)
+    logger.info("Starting application")
 
+    settings = get_settings()
 
-app.include_router(health_router)
+    app = FastAPI(
+        title=settings.APP_NAME,
+        debug=settings.DEBUG,
+    )
+
+    app.add_middleware(RequestIdMiddleware)
+    app.include_router(health_router)
+
+    @app.on_event("shutdown")
+    def shutdown_event():
+        logger.info("Shutting down application")
+
+    return app
+
+app = create_app()

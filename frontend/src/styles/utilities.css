@@ -1,0 +1,14 @@
+.muted {
+  color: var(--muted);
+}
+
+.grid-two {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .grid-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}

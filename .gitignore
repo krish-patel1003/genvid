@@ -1,0 +1,119 @@
+# =========================
+# Global
+# =========================
+.env
+.env.*
+!.env.example
+
+*.log
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.github
+
+
+# =========================
+# Python / Backend
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# FastAPI / Uvicorn
+*.uvicorn.log
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic
+alembic/versions/*.pyc
+
+# =========================
+# Celery
+# =========================
+celerybeat-schedule
+celerybeat.pid
+
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
+dist/
+build/
+.cache/
+
+# Vite / Next
+.vite/
+.next/
+out/
+
+# =========================
+# Docker
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Media / ML / Video
+# =========================
+*.mp4
+*.mov
+*.avi
+*.webm
+
+# Generated media
+media/
+outputs/
+
+# Model artifacts
+models/
+checkpoints/
+*.pt
+*.ckpt
+*.onnx
+
+# =========================
+# Databases / Local State
+# =========================
+*.sqlite3
+*.db
+
+# Redis dumps
+dump.rdb
+
+# =========================
+# Infra / Secrets
+# =========================
+infra/**/secrets/
+*.pem
+*.key
+*.crt
+
+# =========================
+# Temporary Files
+# =========================
+tmp/
+temp/
+*.tmp
+*.temp  
+.cache
+*.bak
+*.old
+*.orig
+*.backup
+*.swp
+*.swo

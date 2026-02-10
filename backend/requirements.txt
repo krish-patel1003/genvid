@@ -19,3 +19,4 @@ google-cloud-pubsub
 google-cloud-run
 google-cloud-storage
 numpy
+imageio

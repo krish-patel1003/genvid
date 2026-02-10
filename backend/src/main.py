@@ -7,6 +7,9 @@ from src.db import create_db_and_tables
 from src.health import router as health_router
 from src.auth.router import router as auth_router
 from src.videos.router import router as videos_router
+from src.users.router import router as users_router
+from src.user_interactions.router import router as interactions_router
+from src.feed.router import router as feed_router
 from src.middleware import RequestIdMiddleware
 from src.logging import setup_logging
 from src.config import get_settings
@@ -37,6 +40,9 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(videos_router)
+    app.include_router(users_router)
+    app.include_router(interactions_router)
+    app.include_router(feed_router)
 
     @app.on_event("shutdown")
     def shutdown_event():

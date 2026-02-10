@@ -2,13 +2,15 @@ import os
 import shutil
 import tempfile
 from uuid import uuid4
+
 from fastapi import UploadFile, HTTPException
+from google.cloud import storage
 from sqlmodel import Session, select
 
 from src.auth.models import User
 from src.users.models import Follow
-from src.gcp.storage import get_gcs_client, generate_presigned_url
 from src.config import get_settings
+from src.gcp.storage import signed_get_url
 
 settings = get_settings()
 BUCKET_NAME = settings.GCS_BUCKET_NAME
@@ -45,7 +47,7 @@ def upload_profile_picture(
         tmp_path = tmp.name
 
     try:
-        client = get_gcs_client()
+        client = storage.Client()
         bucket = client.bucket(BUCKET_NAME)
         blob = bucket.blob(blob_name)
 
@@ -54,7 +56,7 @@ def upload_profile_picture(
             content_type=file.content_type,
         )
 
-        url = generate_presigned_url(BUCKET_NAME, blob_name)
+        url = signed_get_url(BUCKET_NAME, blob_name)
     finally:
         try:
             os.remove(tmp_path)

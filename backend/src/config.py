@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
+    GCS_BUCKET_NAME: str
 
     class Config:
         env_file = ".env"

@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from src.db import get_session
 from src.videos.models import Video
 from src.videos.schema import VideoCreate, VideoRead
-from src.auth_util import get_current_user
+from src.auth.utils import get_current_user
 from src.auth.models import User
 from src.videos.service import create_video, list_user_videos
 
@@ -39,7 +39,7 @@ def get_video(
     video = session.get(Video, video_id)
     if not video or video.user_id != user.id:
         raise HTTPException(status_code=404, detail="Video not found")
-    
+
     return video
 
 

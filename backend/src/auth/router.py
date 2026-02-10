@@ -7,7 +7,7 @@ from src.auth.models import User, OAuthAccount
 from src.auth.schema import SignupSchema, TokenSchema
 from src.auth.password import hash_password, verify_password
 from src.security import create_access_token
-from src.auth_util import get_current_user
+from src.auth.utils import get_current_user
 from src.auth.google_oauth import google
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -93,7 +93,3 @@ async def google_callback(request: Request, session: Session = Depends(get_sessi
 
     jwt_token = create_access_token(subject=str(user.id))
     return {"access_token": jwt_token}
-
-@router.get("/me", response_model=User)
-def read_current_user(current_user: User = Depends(get_current_user)):
-    return current_user

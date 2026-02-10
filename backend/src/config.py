@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GCS_BUCKET_NAME: str
+    GCP_PROJECT_ID: str
+    GCP_PUBSUB_VIDEO_GEN_TOPIC: str
 
     class Config:
         env_file = ".env"

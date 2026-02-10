@@ -15,3 +15,7 @@ python-dotenv
 itsdangerous
 psycopg2-binary
 authlib
+google-cloud-pubsub
+google-cloud-run
+google-cloud-storage
+numpy

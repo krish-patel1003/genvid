@@ -8,8 +8,10 @@ from sqlmodel import Session, select
 from src.auth.models import User
 from src.users.models import Follow
 from src.gcp.storage import get_gcs_client, generate_presigned_url
+from src.config import get_settings
 
-BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+settings = get_settings()
+BUCKET_NAME = settings.GCS_BUCKET_NAME
 
 def update_user(
     *,

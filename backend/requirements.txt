@@ -5,3 +5,13 @@ uvicorn>=0.29.0,<0.30.0
 google-cloud-firestore>=2.16.0,<3.0.0
 python-jose
 PyJWT
+asyncpg
+sqlmodel 
+sqlalchemy
+alembic
+pydantic-settings
+pwdlib[argon2]
+python-dotenv
+itsdangerous
+psycopg2-binary
+authlib

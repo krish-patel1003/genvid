@@ -8,9 +8,18 @@ class Settings(BaseSettings):
     ENV: str = "development"
     DEBUG: bool = True
 
+    SECRET_KEY: str
+
     JWT_SECRET: str 
     JWT_ALGORITHM: str 
     JWT_EXP_MINUTES: int 
+
+    DATABASE_URL: str
+
+    SERVICE_URL: str
+
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
 
     class Config:
         env_file = ".env"

@@ -3,3 +3,5 @@ pydantic>=2.7.0,<3.0.0
 pydantic-settings
 uvicorn>=0.29.0,<0.30.0
 google-cloud-firestore>=2.16.0,<3.0.0
+python-jose
+PyJWT

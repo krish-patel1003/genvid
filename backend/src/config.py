@@ -1,5 +1,6 @@
 # src/config.py
 from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 
 class Settings(BaseSettings):
@@ -7,6 +8,15 @@ class Settings(BaseSettings):
     ENV: str = "development"
     DEBUG: bool = True
 
+    JWT_SECRET: str 
+    JWT_ALGORITHM: str 
+    JWT_EXP_MINUTES: int 
+
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

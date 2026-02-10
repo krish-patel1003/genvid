@@ -5,13 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install Python deps first (better caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
 COPY src ./src
 
+ENV PYTHONPATH=/app
 ENV PORT=8080
 EXPOSE 8080
 

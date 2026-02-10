@@ -1,9 +1,9 @@
 import React from 'react';
 
 const tabs = [
-  { id: 'feed', label: 'Feed', icon: 'home' },
+  { id: 'library', label: 'Library', icon: 'home' },
   { id: 'create', label: 'Create', icon: 'plus' },
-  { id: 'profile', label: 'Profile', icon: 'user' }
+  { id: 'account', label: 'Account', icon: 'user' }
 ];
 
 const Icon = ({ name }) => {

@@ -8,7 +8,7 @@ export default function Topbar({ isAuthed, onLogout }) {
         Genvid
       </div>
       <div className="topbar-right">
-        <div className="brand-sub">AI video feed</div>
+        <div className="brand-sub">AI video studio</div>
         {isAuthed && (
           <button type="button" className="logout-btn" onClick={onLogout} aria-label="Log out">
             <svg viewBox="0 0 24 24" aria-hidden="true">

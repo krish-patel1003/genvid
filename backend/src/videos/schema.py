@@ -6,14 +6,12 @@ from src.videos.enums import VideoStatus, GenerationStatus
 
 
 class VideoCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
+    caption: Optional[str] = None
 
 
 class VideoRead(BaseModel):
     id: int
-    title: str
-    description: Optional[str]
+    caption: Optional[str]
     status: VideoStatus
     created_at: datetime
 

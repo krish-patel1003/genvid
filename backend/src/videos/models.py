@@ -14,8 +14,7 @@ class Video(SQLModel, table=True):
 
     user_id: int = Field(foreign_key="users.id", index=True)
 
-    title: str
-    description: Optional[str] = None
+    caption: Optional[str] = None
 
     status: VideoStatus = Field(default=VideoStatus.PENDING, index=True)
 

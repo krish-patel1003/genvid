@@ -9,8 +9,7 @@ from src.gcp.publisher import publish_generation_job
 
 def create_video(data: VideoCreate, user: User, session: Session) -> Video:
     video = Video(
-        title=data.title,
-        description=data.description,
+        caption=data.caption,
         user_id=user.id,
     )
     session.add(video)

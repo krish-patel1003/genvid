@@ -27,8 +27,8 @@ def get_feed_videos(
         select(
             Video.id.label("video_id"),
             Video.caption,
-            Video.video_url,
-            Video.thumbnail_url,
+            Video.processed_path.label("video_url"),
+            Video.thumbnail_path.label("thumbnail_url"),
             Video.likes_count,
             Video.comments_count,
             Video.created_at,
@@ -39,9 +39,9 @@ def get_feed_videos(
                 else_=False,
             ).label("is_liked_by_user"),
         )
-        .join(User, User.id == Video.owner_id)
+        .join(User, User.id == Video.user_id)
         # Uncomment when follow-based feed is enabled
-        # .join(Follow, Follow.followed_id == Video.owner_id)
+        # .join(Follow, Follow.followed_id == Video.user_id)
         # .where(Follow.follower_id == current_user.id)
         .outerjoin(liked_subq, liked_subq.c.video_id == Video.id)
         .where(Video.status == "READY")

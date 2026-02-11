@@ -20,6 +20,10 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from sqlmodel import SQLModel
 from src.auth.models import User, OAuthAccount
+from src.users.models import Follow
+from src.videos.models import Video
+from src.user_interactions.models import Like
+from src.videos.models import VideoGenerationJob
 from src.config import get_settings
 
 settings = get_settings()

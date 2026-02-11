@@ -1,9 +1,10 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 import sqlalchemy as sa
 
+from src.datetime_utils import utcnow
 from src.videos.enums import VideoStatus, GenerationStatus
 
 class Video(SQLModel, table=True):
@@ -25,12 +26,20 @@ class Video(SQLModel, table=True):
     likes_count: int = Field(default=0)
     comments_count: int = Field(default=0)
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc), sa_type=sa.DateTime(timezone=True),
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
         sa_column_kwargs={
-            'onupdate': sa.func.now(),
-            'server_default': sa.func.now(),
-        }
+            "server_default": sa.func.now(),
+        },
+    )
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": sa.func.now(),
+            "onupdate": sa.func.now(),
+        },
     )
 
     # owner: Optional["User"] = Relationship(back_populates="videos")
@@ -54,10 +63,18 @@ class VideoGenerationJob(SQLModel, table=True):
     # failure info
     error_message: Optional[str] = None
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc), sa_type=sa.DateTime(timezone=True),
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
         sa_column_kwargs={
-            'onupdate': sa.func.now(),
-            'server_default': sa.func.now(),
-        }
+            "server_default": sa.func.now(),
+        },
+    )
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": sa.func.now(),
+            "onupdate": sa.func.now(),
+        },
     )

@@ -1,113 +1,76 @@
-import React from 'react';
-
-const formatDateTime = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-};
+import React, { useEffect, useMemo } from 'react';
+import Reel from '../components/Reel.jsx';
 
 export default function FeedView({
-  generations,
-  previews,
-  isAuthed,
-  isLoading,
-  onReload,
-  onRefresh,
-  onPreview,
-  onPublish
+  videos,
+  openCommentsId,
+  commentDrafts,
+  replyTargets,
+  onToggleLike,
+  onToggleComments,
+  onToggleReply,
+  onDraftChange,
+  onSubmitComment,
+  onFollow,
+  isAuthed
 }) {
+  const videoIds = useMemo(() => videos.map((video) => video.id), [videos]);
+
+  useEffect(() => {
+    const elements = Array.from(document.querySelectorAll('video[data-video]'));
+    if (!elements.length) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.65 }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [videoIds]);
+
   if (!isAuthed) {
     return (
-      <main className="library-view">
+      <main className="feed">
         <div className="empty-state">
-          Sign in to view your generations.
+          Sign in to view your personalized feed.
         </div>
       </main>
     );
   }
 
   return (
-    <main className="library-view">
-      <header className="library-header">
-        <div>
-          <h2>Generation Library</h2>
-          <p>Track queued, running, and published jobs.</p>
-        </div>
-        <button type="button" onClick={onReload} disabled={isLoading}>
-          {isLoading ? 'Refreshing...' : 'Refresh'}
-        </button>
-      </header>
-
-      {generations.length === 0 && (
-        <div className="empty-state">
-          No generations yet. Head to Create to start a new job.
-        </div>
+    <main className="feed">
+      {videos.length === 0 && (
+        <div className="empty-state">No videos yet. Check back soon.</div>
       )}
-
-      <div className="generation-list">
-        {generations.map((generation) => {
-          const preview = previews[generation.id];
-          const previewVideo = preview?.preview_video_url;
-          const previewThumbnail = preview?.preview_thumbnail_url;
-          const status = generation.status || '';
-          const statusClass = status ? `status-${status.toLowerCase()}` : '';
-          const canPublish = status === 'SUCCEEDED';
-
-          return (
-            <article key={generation.id} className="generation-card">
-              <div className="generation-media">
-                {previewVideo ? (
-                  <video
-                    src={previewVideo}
-                    poster={previewThumbnail || undefined}
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : previewThumbnail ? (
-                  <img src={previewThumbnail} alt="Preview" />
-                ) : (
-                  <div className="preview-placeholder">No preview</div>
-                )}
-              </div>
-              <div className="generation-body">
-                <div className="generation-meta">
-                  <span className={`status-pill ${statusClass}`}>{status || 'UNKNOWN'}</span>
-                  <span>#{generation.id}</span>
-                  {generation.created_at && (
-                    <span>{formatDateTime(generation.created_at)}</span>
-                  )}
-                </div>
-                <p className="generation-prompt">{generation.prompt}</p>
-                {generation.error_message && (
-                  <div className="generation-error">{generation.error_message}</div>
-                )}
-                <div className="generation-actions">
-                  <button type="button" onClick={() => onRefresh(generation.id)}>
-                    Refresh
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onPreview(generation.id)}
-                    disabled={!canPublish}
-                  >
-                    Get preview
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onPublish(generation.id)}
-                    disabled={!canPublish}
-                  >
-                    Publish
-                  </button>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      {videos.map((video) => (
+        <Reel
+          key={video.id}
+          video={video}
+          isCommentsOpen={openCommentsId === video.id}
+          onLike={() => onToggleLike(video.id)}
+          onComments={() => onToggleComments(video.id)}
+          commentDraft={commentDrafts[video.id] || ''}
+          replyTarget={replyTargets[video.id] || null}
+          onToggleReply={(commentId) => onToggleReply(video.id, commentId)}
+          onDraftChange={(value) => onDraftChange(video.id, value)}
+          onSubmitComment={() => onSubmitComment(video.id)}
+          onFollow={() => onFollow(video)}
+          isFollowing={video.isFollowing}
+          isAuthed={isAuthed}
+        />
+      ))}
     </main>
   );
 }

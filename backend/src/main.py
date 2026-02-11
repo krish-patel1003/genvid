@@ -13,7 +13,8 @@ from src.feed.router import router as feed_router
 from src.middleware import RequestIdMiddleware
 from src.logging import setup_logging
 from src.config import get_settings
-from src.db import create_db_and_tables
+from fastapi.middleware.cors import CORSMiddleware
+
 
 
 
@@ -37,6 +38,14 @@ def create_app() -> FastAPI:
 
     app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*", 'localhost:5173'],          # allow all origins
+        allow_credentials=True,
+        allow_methods=["*"],          # allow all HTTP methods
+        allow_headers=["*"],          # allow all headers
+    )
+
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(videos_router)

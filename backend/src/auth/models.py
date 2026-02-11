@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import UniqueConstraint
 from typing import Optional, List
 from datetime import datetime, timezone
+from src.datetime_utils import utcnow
 import sqlalchemy as sa
 
 
@@ -16,16 +17,24 @@ class User(SQLModel, table=True):
     profile_pic: Optional[str] = None
     bio: Optional[str] = None
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc), sa_type=sa.DateTime(timezone=True),
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
         sa_column_kwargs={
-            'onupdate': sa.func.now(),
-            'server_default': sa.func.now(),
-        }
+            "server_default": sa.func.now(),
+        },
+    )
+
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_type=sa.DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": sa.func.now(),
+            "onupdate": sa.func.now(),
+        },
     )
 
     oauth_accounts: List["OAuthAccount"] = Relationship(back_populates="user")
-    # videos: List["Video"] = Relationship(back_populates="owner")
 
 
 class OAuthAccount(SQLModel, table=True):

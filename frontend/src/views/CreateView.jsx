@@ -1,31 +1,20 @@
 import React, { useMemo } from 'react';
 
-const formatDateTime = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-};
-
 export default function CreateView({
+  messages,
   prompt,
+  pendingApproval,
+  previewUrl,
+  generationId,
+  generationStatus,
+  isLocked,
   isAuthed,
-  isSubmitting,
-  latestGeneration,
-  preview,
   onPromptChange,
   onGenerate,
-  onRefresh,
-  onFetchPreview,
-  onPublish
+  onApprove
 }) {
   const canSubmit = useMemo(() => prompt.trim().length > 0, [prompt]);
-  const status = latestGeneration?.status || '';
-  const statusClass = status ? `status-${status.toLowerCase()}` : '';
-  const canPublish = status === 'SUCCEEDED';
-  const previewVideo = preview?.preview_video_url;
-  const previewThumbnail = preview?.preview_thumbnail_url;
-  const isDisabled = !isAuthed || isSubmitting;
+  const isDisabled = !isAuthed || isLocked;
 
   return (
     <main className="create-view">
@@ -34,153 +23,88 @@ export default function CreateView({
         <p>Generate short reels with a single prompt.</p>
       </div>
 
-      <section className="generator-panel">
-        <div className="generator-header">
-          <div className="generator-title">
-            <span className="status-pill">Generation</span>
-            {status && (
-              <span className={`status-pill ${statusClass}`}>
-                {status}
-              </span>
-            )}
-          </div>
-          {latestGeneration && (
-            <div className="generator-meta">
-              <span>#{latestGeneration.id}</span>
-              {latestGeneration.created_at && (
-                <span>{formatDateTime(latestGeneration.created_at)}</span>
-              )}
+      <div className="chat-panel">
+        <div className="chat-actions">
+          <div className="status-pill">Creative mode</div>
+          {pendingApproval && (
+            <div className="approval-actions">
+              <button type="button" onClick={() => onApprove(true)}>
+                Approve post
+              </button>
+              <button type="button" onClick={() => onApprove(false)}>
+                Cancel
+              </button>
             </div>
           )}
         </div>
-
-        <div className="prompt-field">
-          <label htmlFor="prompt">Prompt</label>
-          <textarea
-            id="prompt"
+        <div className="chat-messages">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`chat-bubble ${message.role}`}
+            >
+              {message.text}
+            </div>
+          ))}
+        </div>
+        <div className="chat-input">
+          <input
+            type="text"
             placeholder={
               !isAuthed
                 ? 'Sign in to generate'
-                : 'Describe the scene, motion, and style...'
+                : isLocked
+                  ? 'Finish the current generation to continue'
+                  : 'Describe your video...'
             }
             value={prompt}
             onChange={(event) => onPromptChange(event.target.value)}
-            disabled={!isAuthed}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !isDisabled) onGenerate();
+            }}
+            disabled={isDisabled}
           />
-        </div>
-
-        <div className="generator-actions">
-          <button
-            type="button"
-            onClick={onGenerate}
-            disabled={isDisabled || !canSubmit}
-          >
-            {isSubmitting ? 'Generating...' : 'Generate'}
+          <button type="button" onClick={onGenerate} disabled={isDisabled || !canSubmit}>
+            Generate
           </button>
-          {latestGeneration && (
-            <>
-              <button
-                type="button"
-                onClick={() => onRefresh(latestGeneration.id)}
-                disabled={!isAuthed}
-              >
-                Refresh status
-              </button>
-              <button
-                type="button"
-                onClick={() => onFetchPreview(latestGeneration.id)}
-                disabled={!isAuthed || !canPublish}
-              >
-                Get preview
-              </button>
-              <button
-                type="button"
-                onClick={() => onPublish(latestGeneration.id)}
-                disabled={!isAuthed || !canPublish}
-              >
-                Publish
-              </button>
-            </>
-          )}
         </div>
+      </div>
 
-        {!isAuthed && (
-          <div className="callout">
-            Sign in to start a generation. Your access token is saved locally.
-          </div>
-        )}
-
-        {latestGeneration?.error_message && (
-          <div className="generation-error">{latestGeneration.error_message}</div>
-        )}
-
-        {latestGeneration && (
-          <div className="generation-details">
+      {(generationId || previewUrl) && (
+        <section className="preview-panel">
+          <div className="preview-header">
             <div>
-              <span className="label">Prompt</span>
-              <span>{latestGeneration.prompt}</span>
+              <h3>Generated preview</h3>
+              <p>
+                {generationId ? `Generation #${generationId}` : 'Generation'}{' '}
+                {generationStatus ? `· ${generationStatus}` : ''}
+              </p>
             </div>
-            <div>
-              <span className="label">Status</span>
-              <span>{latestGeneration.status}</span>
-            </div>
+            {pendingApproval && (
+              <div className="preview-actions">
+                <button type="button" onClick={() => onApprove(true)}>
+                  Publish now
+                </button>
+                <button type="button" onClick={() => onApprove(false)}>
+                  Not now
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </section>
-
-      <section className="preview-panel">
-        <div className="preview-header">
-          <div>
-            <h3>Preview</h3>
-            <p>
-              {latestGeneration
-                ? `Generation #${latestGeneration.id}`
-                : 'Create a generation to see previews'}
-            </p>
-          </div>
-          {latestGeneration && (
-            <div className="preview-actions">
-              <button
-                type="button"
-                onClick={() => onFetchPreview(latestGeneration.id)}
-                disabled={!isAuthed || !canPublish}
-              >
-                Refresh preview
-              </button>
-              <button
-                type="button"
-                onClick={() => onPublish(latestGeneration.id)}
-                disabled={!isAuthed || !canPublish}
-              >
-                Publish
-              </button>
-            </div>
+          {previewUrl ? (
+            <video
+              className="preview-video"
+              src={previewUrl}
+              controls
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <div className="preview-placeholder">Preview will appear here.</div>
           )}
-        </div>
-        {previewVideo ? (
-          <video
-            className="preview-video"
-            src={previewVideo}
-            poster={previewThumbnail || undefined}
-            controls
-            muted
-            loop
-            playsInline
-          />
-        ) : previewThumbnail ? (
-          <img
-            className="preview-image"
-            src={previewThumbnail}
-            alt="Preview thumbnail"
-          />
-        ) : (
-          <div className="preview-placeholder">
-            {latestGeneration && latestGeneration.status === 'SUCCEEDED'
-              ? 'Preview ready. Fetch the preview URLs to view it.'
-              : 'Preview will appear here.'}
-          </div>
-        )}
-      </section>
+        </section>
+      )}
     </main>
   );
 }

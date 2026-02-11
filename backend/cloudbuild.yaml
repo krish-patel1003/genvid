@@ -1,0 +1,14 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+- name: gcr.io/k8s-skaffold/pack
+  entrypoint: pack
+  args:
+    - build
+    - us-central1-docker.pkg.dev/genvidgcp/genvid-artifact-repo/genvid-backend
+    - --builder
+    - gcr.io/buildpacks/builder:latest
+    - --cache-image
+    - us-central1-docker.pkg.dev/genvidgcp/genvid-artifact-repo/genvid-backend-cache:latest
+    - --publish

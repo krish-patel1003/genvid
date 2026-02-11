@@ -10,6 +10,8 @@ from src.videos.router import router as videos_router
 from src.users.router import router as users_router
 from src.user_interactions.router import router as interactions_router
 from src.feed.router import router as feed_router
+from src.videos.generation.router import router as video_generation_router
+from src.events.router import router as events_router
 from src.middleware import RequestIdMiddleware
 from src.logging import setup_logging
 from src.config import get_settings
@@ -52,7 +54,8 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(interactions_router)
     app.include_router(feed_router)
-
+    app.include_router(video_generation_router)
+    app.include_router(events_router)
     @app.on_event("shutdown")
     def shutdown_event():
         logger.info("Shutting down application")

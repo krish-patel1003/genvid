@@ -13,4 +13,3 @@ class GenerationStatus(str, Enum):
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
-    DISCARDED = "DISCARDED"

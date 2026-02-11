@@ -36,6 +36,7 @@ export default function App() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
   const profilePreviewRef = useRef(null);
+  const generationNoticeRef = useRef({ id: null, status: null });
 
   const [feedItems, setFeedItems] = useState([]);
   const [feedLoading, setFeedLoading] = useState(false);
@@ -114,17 +115,19 @@ export default function App() {
     return Array.from(map.values());
   }, [feedItems]);
 
-  const previewUrl = useMemo(
-    () => buildGeneratedVideoUrl(latestGeneration?.file_path),
-    [latestGeneration]
-  );
+  const previewUrl = useMemo(() => {
+    const path = latestGeneration?.preview_video_path
+      || latestGeneration?.preview
+      || latestGeneration?.file_path;
+    return buildGeneratedVideoUrl(path);
+  }, [latestGeneration]);
 
   const generationLocked = useMemo(() => {
     if (pendingApproval) return true;
     if (!latestGeneration) return false;
     const status = latestGeneration.status;
     if (!status) return true;
-    return status !== 'READY' && status !== 'FAILED';
+    return status !== 'SUCCEEDED' && status !== 'FAILED';
   }, [latestGeneration, pendingApproval]);
 
   useEffect(() => {
@@ -161,87 +164,123 @@ export default function App() {
   }, [following]);
 
   useEffect(() => {
-    let ws;
+    if (!token) return undefined;
+
+    let cancelled = false;
     let reconnectTimer;
-    let heartbeatTimer;
-    let closed = false;
+    const controller = new AbortController();
 
-    const wsUrl = API_BASE
-      ? API_BASE.replace(/^http/, 'ws') + '/ws'
-      : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
+    const baseUrl = API_BASE || `${window.location.protocol}//${window.location.host}`;
+    const eventsUrl = `${baseUrl}/events/video-generation`;
 
-    const connect = () => {
-      ws = new WebSocket(wsUrl);
+    const handleGenerationUpdate = (job) => {
+      if (!job?.id) return;
 
-      ws.onopen = () => {
-        heartbeatTimer = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send('ping');
-          }
-        }, 15000);
-      };
+      const previewPath = job.preview ?? job.preview_video_path ?? job.file_path;
 
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload?.type === 'video_generation') {
-            const data = payload.data || {};
-            setLatestGeneration((prev) => {
-              if (!prev || prev?.id === data.id) {
-                return { ...prev, ...data };
-              }
-              return prev;
-            });
+      setLatestGeneration((prev) => {
+        if (prev && prev.id && prev.id !== job.id) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ...job,
+          preview_video_path: previewPath,
+          file_path: previewPath
+        };
+      });
 
-            if (data.status === 'READY') {
-              setPendingApproval(true);
-              setMessages((prev) => [
-                buildMessage('assistant', `Draft ready (id ${data.id}). Preview below. Publish now?`),
-                ...prev
-              ]);
-            } else if (data.status === 'FAILED') {
-              setPendingApproval(false);
-              setMessages((prev) => [
-                buildMessage('assistant', `Generation failed for id ${data.id}. Try again.`),
-                ...prev
-              ]);
+      if (job.status !== 'SUCCEEDED' && job.status !== 'FAILED') return;
+
+      const last = generationNoticeRef.current;
+      if (last.id === job.id && last.status === job.status) return;
+      generationNoticeRef.current = { id: job.id, status: job.status };
+
+      if (job.status === 'SUCCEEDED') {
+        setPendingApproval(true);
+        setMessages((prev) => [
+          buildMessage('assistant', `Draft ready (id ${job.id}). Preview below. Publish now?`),
+          ...prev
+        ]);
+      } else if (job.status === 'FAILED') {
+        setPendingApproval(false);
+        setMessages((prev) => [
+          buildMessage('assistant', `Generation failed for id ${job.id}. Try again.`),
+          ...prev
+        ]);
+      }
+    };
+
+    const connect = async () => {
+      try {
+        const response = await fetch(eventsUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`SSE connection failed (${response.status})`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('SSE stream unavailable');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          let boundaryIndex;
+
+          while ((boundaryIndex = buffer.indexOf('\n\n')) !== -1) {
+            const rawEvent = buffer.slice(0, boundaryIndex).trim();
+            buffer = buffer.slice(boundaryIndex + 2);
+            if (!rawEvent) continue;
+
+            const dataLines = rawEvent
+              .split('\n')
+              .filter((line) => line.startsWith('data:'))
+              .map((line) => line.slice(5).trim());
+
+            if (dataLines.length === 0) continue;
+
+            try {
+              const jobs = JSON.parse(dataLines.join('\n'));
+              if (!Array.isArray(jobs) || jobs.length === 0) continue;
+
+              const currentId = latestGeneration?.id;
+              const job = currentId
+                ? jobs.find((item) => item.id === currentId) || jobs[0]
+                : jobs[0];
+
+              handleGenerationUpdate(job);
+            } catch {
+              // ignore parse errors
             }
           }
-        } catch {
-          // ignore non-json messages
         }
-      };
-
-      ws.onclose = () => {
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
+      } catch {
+        if (!cancelled) {
+          reconnectTimer = setTimeout(connect, 1500);
         }
-        if (!closed) {
-          reconnectTimer = setTimeout(connect, 1200);
-        }
-      };
-
-      ws.onerror = () => {
-        try {
-          ws.close();
-        } catch {
-          // ignore
-        }
-      };
+      }
     };
 
     connect();
 
     return () => {
-      closed = true;
+      cancelled = true;
+      controller.abort();
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      if (ws && ws.readyState < WebSocket.CLOSING) {
-        ws.close();
-      }
     };
-  }, []);
+  }, [token, latestGeneration?.id]);
 
   useEffect(() => {
     if (!token) {

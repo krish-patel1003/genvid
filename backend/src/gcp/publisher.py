@@ -11,8 +11,8 @@ publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, TOPIC)
 
 
-def publish_generation_job(job_id: int):
+def publish_generation_job(job_data: dict):
     publisher.publish(
         topic_path,
-        json.dumps({"job_id": job_id}).encode("utf-8"),
+        json.dumps(job_data).encode("utf-8"),
     )

@@ -13,14 +13,16 @@ const buildMessage = (role, text) => ({
   text
 });
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = import.meta.env.VITE_API_BASE
+  || 'https://genvid-backend-286573941342.us-central1.run.app';
 
 const buildGeneratedVideoUrl = (filePath) => {
   if (!filePath) return '';
+  if (/^https?:\/\//i.test(filePath)) return filePath;
   const normalized = filePath.replace(/\\\\/g, '/');
-  const fileName = normalized.split('/').pop();
-  if (!fileName) return '';
-  return `${API_BASE}/generated/${fileName}`;
+  if (!API_BASE) return normalized;
+  if (normalized.startsWith('/')) return `${API_BASE}${normalized}`;
+  return `${API_BASE}/${normalized}`;
 };
 
 export default function App() {
@@ -116,6 +118,8 @@ export default function App() {
   }, [feedItems]);
 
   const previewUrl = useMemo(() => {
+    const url = latestGeneration?.preview_video_url;
+    if (url) return url;
     const path = latestGeneration?.preview_video_path
       || latestGeneration?.preview
       || latestGeneration?.file_path;
@@ -173,6 +177,22 @@ export default function App() {
     const baseUrl = API_BASE || `${window.location.protocol}//${window.location.host}`;
     const eventsUrl = `${baseUrl}/events/video-generation`;
 
+    const fetchPreviewUrls = async (jobId) => {
+      try {
+        const preview = await api.getPreviewUrls(token, jobId);
+        setLatestGeneration((prev) => {
+          if (prev && prev.id && prev.id !== jobId) return prev;
+          return {
+            ...prev,
+            preview_video_url: preview?.preview_video_url || prev?.preview_video_url,
+            preview_thumbnail_url: preview?.preview_thumbnail_url || prev?.preview_thumbnail_url
+          };
+        });
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
     const handleGenerationUpdate = (job) => {
       if (!job?.id) return;
 
@@ -202,6 +222,7 @@ export default function App() {
           buildMessage('assistant', `Draft ready (id ${job.id}). Preview below. Publish now?`),
           ...prev
         ]);
+        fetchPreviewUrls(job.id);
       } else if (job.status === 'FAILED') {
         setPendingApproval(false);
         setMessages((prev) => [
@@ -215,7 +236,8 @@ export default function App() {
       try {
         const response = await fetch(eventsUrl, {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
+            Accept: 'text/event-stream'
           },
           signal: controller.signal
         });
@@ -609,11 +631,16 @@ export default function App() {
     }
 
     try {
-      const generation = await api.createVideo(token, { prompt: trimmed });
-      setLatestGeneration(generation);
+      const generation = await api.createGeneration(token, { prompt: trimmed });
+      const jobId = generation?.job_id;
+      const status = generation?.status;
+      if (jobId) {
+        generationNoticeRef.current = { id: jobId, status: null };
+      }
+      setLatestGeneration(jobId ? { id: jobId, status } : generation);
       setPendingApproval(false);
       setMessages((prev) => [
-        buildMessage('assistant', `Draft queued (id ${generation.id}). I'll notify you when it is ready.`),
+        buildMessage('assistant', `Draft queued (id ${jobId ?? 'unknown'}). I'll notify you when it is ready.`),
         ...prev
       ]);
     } catch (err) {
@@ -653,8 +680,11 @@ export default function App() {
     }
 
     try {
-      const video = await api.publishVideo(token, latestGeneration.id);
-      setPostedVideos((prev) => [{ id: video.id, src: video.video_url || '' }, ...prev]);
+      const result = await api.publishVideo(token, latestGeneration.id);
+      const videoId = result?.video_id ?? result?.id;
+      if (videoId) {
+        setPostedVideos((prev) => [{ id: videoId, src: previewUrl || '' }, ...prev]);
+      }
       setMessages((prev) => [
         buildMessage('assistant', 'Posting now. Your reel is live.'),
         ...prev

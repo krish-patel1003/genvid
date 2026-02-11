@@ -10,22 +10,32 @@ from src.videos.models import VideoGenerationJob
 
 router = APIRouter(prefix="/events", tags=["events"])
 
-
 @router.get("/video-generation")
-def stream_events(
-    session: Session = Depends(get_session),
-    current_user=Depends(get_current_user),
-):
+def stream_events(current_user=Depends(get_current_user)):
+
     def event_stream():
         while True:
-            stmt = (
-                select(VideoGenerationJob)
-                .where(VideoGenerationJob.user_id == current_user.id)
-                .order_by(VideoGenerationJob.created_at.desc())
-            )
-            jobs = session.exec(stmt).all()
+            try:
+                with get_session() as session:
+                    jobs = session.exec(
+                        select(VideoGenerationJob)
+                        .where(VideoGenerationJob.user_id == current_user.id)
+                        .order_by(VideoGenerationJob.updated_at.desc())
+                    ).all()
 
-            yield f"data: {json.dumps([{'id': j.id, 'status': j.status, 'preview': j.preview_video_path} for j in jobs])}\n\n"
+                    payload = [
+                        {
+                            "id": j.id,
+                            "status": j.status,
+                            "preview": j.preview_video_path,
+                        }
+                        for j in jobs
+                    ]
+
+                yield f"data: {json.dumps(payload)}\n\n"
+
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
             time.sleep(3)
 

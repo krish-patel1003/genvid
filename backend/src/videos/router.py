@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 
 from src.db import get_session
 from src.videos.models import Video, VideoGenerationJob
-from src.videos.schema import VideoCreate, VideoRead
+from src.videos.schema import VideoCreate, VideoObject, VideosResponse
 from src.auth.utils import get_current_user
 from src.auth.models import User
 from src.videos.service import create_video, list_user_videos
@@ -47,6 +47,14 @@ def publish_generation(
     session.refresh(video)
 
     return {"video_id": video.id}
+
+@router.get("/user-videos", response_model=VideosResponse)
+def get_user_videos(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    response = list_user_videos(user=user, session=session)
+    return response
 
 
 @router.get("/{job_id}/preview-urls")

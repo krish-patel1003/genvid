@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 
 from src.videos.models import Video, VideoGenerationJob
-from src.videos.schema import GenerationCreate, VideoCreate
+from src.videos.schema import GenerationCreate, VideoCreate, VideoObject, VideosResponse
 from src.videos.enums import GenerationStatus
 from src.auth.models import User
 from src.gcp.publisher import publish_generation_job
@@ -23,7 +23,10 @@ def list_user_videos(user: User, session: Session) -> list[Video]:
     videos = session.exec(
         select(Video).where(Video.user_id == user.id)
     ).all()
-    return videos
+
+    # convert to VideoObject schema
+    videos = [VideoObject.model_validate(v) for v in videos]
+    return VideosResponse(videos=videos)
 
 
 def create_generation_task(

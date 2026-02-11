@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = import.meta.env.VITE_API_BASE
+  || "https://genvid-backend-286573941342.us-central1.run.app";
 
 export async function apiRequest(path, options = {}) {
   const {
@@ -51,11 +52,13 @@ export const api = {
   login: (payload) => apiRequest("/auth/token", { method: "POST", form: payload }),
   me: (token) => apiRequest("/users/me", { token }),
   updateMe: (token, payload) => apiRequest("/users/me", { method: "PATCH", token, body: payload }),
-  createVideo: (token, payload) => apiRequest("/videos/create", { method: "POST", token, body: payload }),
-  publishVideo: (token, generationId) => apiRequest(`/videos/generation/${generationId}/publish`, { method: "POST", token }),
+  createGeneration: (token, payload) => apiRequest("/video-generation/generate", { method: "POST", token, body: payload }),
+  getGeneration: (token, jobId) => apiRequest(`/video-generation/${jobId}`, { token }),
+  getPreviewUrls: (token, jobId) => apiRequest(`/videos/${jobId}/preview-urls`, { token }),
+  publishVideo: (token, jobId) => apiRequest(`/videos/${jobId}/publish`, { method: "POST", token }),
   getVideo: (videoId) => apiRequest(`/videos/${videoId}`),
   deleteVideo: (token, videoId) => apiRequest(`/videos/${videoId}`, { method: "DELETE", token }),
-  getMyVideos: (token) => apiRequest("/videos/user/videos", { token }),
+  getMyVideos: (token) => apiRequest("/videos/user-videos", { token }),
   getFeed: (token) => apiRequest("/feed/", { token }),
   likeVideo: (token, videoId) => apiRequest(`/interactions/${videoId}/like`, { method: "POST", token }),
   unlikeVideo: (token, videoId) => apiRequest(`/interactions/${videoId}/like`, { method: "DELETE", token }),

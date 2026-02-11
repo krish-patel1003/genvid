@@ -9,15 +9,25 @@ class VideoCreate(BaseModel):
     caption: Optional[str] = None
 
 
-class VideoRead(BaseModel):
+class VideoObject(BaseModel):
     id: int
-    caption: Optional[str]
+    user_id: int
+    caption: Optional[str] = None
     status: VideoStatus
+    source_path: Optional[str] = None
+    processed_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    likes_count: int
+    comments_count: int
     created_at: datetime
+    updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
+class VideosResponse(BaseModel):
+    videos: list[VideoObject]
 
 class GenerationCreate(BaseModel):
     prompt: str

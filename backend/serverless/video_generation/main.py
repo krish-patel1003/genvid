@@ -1,38 +1,25 @@
 import base64
 import json
 import os
-import time
 import logging
 import traceback
 import psycopg2
-import numpy as np
-
+from google.cloud import run_v2
 
 logging.basicConfig(level=logging.INFO)
 
 DATABASE_URL = os.environ["DATABASE_URL"]
+PROJECT_ID = os.environ.get("PROJECT_ID", "genvidgcp")
+REGION = os.environ["REGION"]
+GPU_JOB_NAME = os.environ["GPU_JOB_NAME"]
 
-# TODO: add idempotency guard (check status == QUEUED)
-# TODO: add retry-safe logic
-# TODO: move generation to GPU Cloud Run Job
-# TODO: upload preview to GCS instead of dummy path
-def update_job_status(job_id, status, preview_path=None, error_message=None):
+
+def update_job_status(job_id, status, error_message=None):
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
 
     try:
-        if preview_path:
-            cur.execute(
-                """
-                UPDATE video_generation_jobs
-                SET status=%s,
-                    preview_video_path=%s,
-                    updated_at=NOW()
-                WHERE id=%s
-                """,
-                (status, preview_path, job_id),
-            )
-        elif error_message:
+        if error_message:
             cur.execute(
                 """
                 UPDATE video_generation_jobs
@@ -57,7 +44,7 @@ def update_job_status(job_id, status, preview_path=None, error_message=None):
         conn.commit()
 
     except Exception as e:
-        logging.error(f"Failed to update job {job_id}: {str(e)}")
+        logging.error(f"DB update failed for job {job_id}: {str(e)}")
         conn.rollback()
         raise
 
@@ -66,20 +53,28 @@ def update_job_status(job_id, status, preview_path=None, error_message=None):
         conn.close()
 
 
-def dummy_generate(prompt):
-    logging.info(f"Starting dummy generation for prompt: {prompt}")
+def trigger_gpu_job(payload: dict):
+    client = run_v2.JobsClient()
 
-    time.sleep(5)
+    job_path = client.job_path(PROJECT_ID, REGION, GPU_JOB_NAME)
 
-    frames = []
-    for i in range(24):
-        frame = np.zeros((256, 256, 3))
-        frame[:, :, 0] = i / 24
-        frames.append(frame)
+    logging.info(f"Triggering Cloud Run Job: {GPU_JOB_NAME}")
 
-    logging.info("Dummy generation completed")
+    request = run_v2.RunJobRequest(
+        name=job_path,
+        overrides=run_v2.RunJobRequest.Overrides(
+            container_overrides=[
+                run_v2.RunJobRequest.Overrides.ContainerOverride(
+                    args=[
+                        "--job_id", str(payload["job_id"]),
+                        "--prompt", payload["prompt"],
+                    ]
+                )
+            ]
+        ),
+    )
 
-    return "/dummy/previews/generated.mp4"
+    client.run_job(request=request)
 
 
 def handle_pubsub(event, context):
@@ -88,25 +83,19 @@ def handle_pubsub(event, context):
         payload = json.loads(data)
 
         job_id = payload["job_id"]
-        prompt = payload["prompt"]
 
-        logging.info(f"Received job {job_id}")
+        logging.info(f"Dispatching job {job_id}")
 
-        # mark RUNNING
+        # Mark RUNNING before triggering
         update_job_status(job_id, "RUNNING")
 
-        preview_path = dummy_generate(prompt)
+        trigger_gpu_job(payload)
 
-        update_job_status(job_id, "SUCCEEDED", preview_path=preview_path)
-
-        logging.info(f"Job {job_id} succeeded")
+        logging.info(f"GPU job dispatched for {job_id}")
 
     except Exception as e:
-        error_message = str(e)
-        logging.error(f"Job failed: {error_message}")
         logging.error(traceback.format_exc())
-
         try:
-            update_job_status(job_id, "FAILED", error_message=error_message)
-        except Exception as db_error:
-            logging.error(f"Failed to persist error: {str(db_error)}")
+            update_job_status(payload.get("job_id"), "FAILED", error_message=str(e))
+        except Exception:
+            logging.error("Failed to mark job as FAILED")

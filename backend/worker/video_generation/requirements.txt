@@ -1,0 +1,7 @@
+psycopg2-binary
+numpy
+imageio
+imageio-ffmpeg
+google-cloud-storage
+google-genai
+argparse

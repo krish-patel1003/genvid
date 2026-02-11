@@ -9,7 +9,7 @@ from src.auth.models import User
 from src.videos.service import create_video, list_user_videos
 from src.videos.schema import GenerationCreate, GenerationRead
 from src.videos.service import create_generation_task
-from src.videos.enums import GenerationStatus
+from src.videos.enums import GenerationStatus, VideoStatus
 from src.gcp.storage import signed_get_url
 
 
@@ -30,18 +30,18 @@ def publish_generation(
         raise HTTPException(status_code=400, detail="Job not publishable")
 
     video = Video(
-        owner_id=user.id,
+        user_id=user.id,
         caption=job.prompt,
-        video_url=job.preview_video_path,
-        thumbnail_url=job.preview_thumbnail_path,
-        status="READY",
+        processed_path=job.preview_video_path,
+        thumbnail_path=job.preview_thumbnail_path,
+        status=VideoStatus.READY,
     )
 
     session.add(video)
 
-    # finalize job
-    job.status = GenerationStatus.DISCARDED
-    session.add(job)
+    # # finalize job
+    # job.status = GenerationStatus.
+    # session.add(job)
 
     session.commit()
     session.refresh(video)
@@ -70,13 +70,13 @@ def get_preview_urls(
     if job.status != GenerationStatus.SUCCEEDED:
         raise HTTPException(status_code=400, detail="Preview not available yet")
 
-    if not job.preview_video_object:
+    if not job.preview_video_path:
         raise HTTPException(status_code=500, detail="Preview object missing")
 
     return {
-        "preview_video_url": signed_get_url(job.preview_video_object, expires_minutes=30),
+        "preview_video_url": signed_get_url(job.preview_video_path, expires_minutes=30),
         "preview_thumbnail_url": (
-            signed_get_url(job.preview_thumbnail_object, expires_minutes=30)
-            if job.preview_thumbnail_object else None
+            signed_get_url(job.preview_thumbnail_path, expires_minutes=30)
+            if job.preview_thumbnail_path else None
         ),
     }

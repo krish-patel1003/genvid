@@ -26,8 +26,20 @@ class VideoObject(BaseModel):
         "from_attributes": True
     }
 
+class VideoPublic(BaseModel):
+    id: int
+    owner_id: int
+    caption: Optional[str] = None
+    status: VideoStatus
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    likes_count: int
+    comments_count: int
+    created_at: datetime
+    updated_at: datetime
+
 class VideosResponse(BaseModel):
-    videos: list[VideoObject]
+    videos: list[VideoPublic]
 
 class GenerationCreate(BaseModel):
     prompt: str
@@ -41,7 +53,9 @@ class GenerationRead(BaseModel):
     preview_video_path: Optional[str]
     preview_thumbnail_path: Optional[str]
     error_message: Optional[str]
+    published_video_id: Optional[int]
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = {
         "from_attributes": True

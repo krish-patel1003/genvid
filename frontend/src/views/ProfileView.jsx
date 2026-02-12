@@ -209,6 +209,7 @@ export default function ProfileView({
                 key={video.id}
                 className="grid-video"
                 src={video.src}
+                poster={video.poster || undefined}
                 muted
                 loop
                 playsInline
@@ -261,6 +262,7 @@ export default function ProfileView({
                     key={video.id}
                     className="grid-video"
                     src={video.src}
+                    poster={video.poster || undefined}
                     muted
                     loop
                     playsInline

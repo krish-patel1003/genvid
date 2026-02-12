@@ -20,5 +20,6 @@ class VideoGenerationJob(BaseModel):
     preview_video_path: Optional[str] = None
     preview_thumbnail_path: Optional[str] = None
     error_message: Optional[str] = None
+    published_video_id: Optional[int] = None
 
     model_config = {"from_attributes": True}

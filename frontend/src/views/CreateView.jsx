@@ -9,12 +9,20 @@ export default function CreateView({
   generationStatus,
   isLocked,
   isAuthed,
+  draftGenerations = [],
+  onSelectDraft,
   onPromptChange,
   onGenerate,
   onApprove
 }) {
   const canSubmit = useMemo(() => prompt.trim().length > 0, [prompt]);
   const isDisabled = !isAuthed || isLocked;
+  const formatTimestamp = (value) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString();
+  };
 
   return (
     <main className="create-view">
@@ -26,16 +34,6 @@ export default function CreateView({
       <div className="chat-panel">
         <div className="chat-actions">
           <div className="status-pill">Creative mode</div>
-          {pendingApproval && (
-            <div className="approval-actions">
-              <button type="button" onClick={() => onApprove(true)}>
-                Approve post
-              </button>
-              <button type="button" onClick={() => onApprove(false)}>
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
         <div className="chat-messages">
           {messages.map((message) => (
@@ -60,7 +58,7 @@ export default function CreateView({
             value={prompt}
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !isDisabled) onGenerate();
+              if (event.key === 'Enter' && !isDisabled && canSubmit) onGenerate();
             }}
             disabled={isDisabled}
           />
@@ -103,6 +101,32 @@ export default function CreateView({
           ) : (
             <div className="preview-placeholder">Preview will appear here.</div>
           )}
+        </section>
+      )}
+
+      {draftGenerations.length > 0 && (
+        <section className="drafts-panel">
+          <div className="drafts-header">
+            <h3>Unpublished drafts</h3>
+            <p>Pick a generation to review or publish.</p>
+          </div>
+          <div className="drafts-grid">
+            {draftGenerations.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                className="draft-card"
+                onClick={() => onSelectDraft?.(job)}
+              >
+                <div className="draft-card-title">Generation #{job.id}</div>
+                {job.prompt && <div className="draft-card-prompt">{job.prompt}</div>}
+                <div className="draft-card-meta">
+                  <span>{job.status}</span>
+                  {job.updated_at && <span>{formatTimestamp(job.updated_at)}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
       )}
     </main>

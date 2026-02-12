@@ -62,6 +62,9 @@ class VideoGenerationJob(SQLModel, table=True):
     # failure info
     error_message: Optional[str] = None
 
+    # publish info
+    published_video_id: Optional[int] = Field(default=None, index=True)
+
     created_at: datetime = Field(
         default_factory=utcnow,
         sa_type=sa.DateTime(timezone=True),

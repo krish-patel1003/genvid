@@ -26,8 +26,9 @@ const buildGeneratedVideoUrl = (filePath) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('feed');
-  const [token, setToken] = useState(() => localStorage.getItem('genvid_token') || '');
+  const initialToken = localStorage.getItem('genvid_token') || '';
+  const [activeTab, setActiveTab] = useState(initialToken ? 'feed' : 'profile');
+  const [token, setToken] = useState(() => initialToken);
   const [user, setUser] = useState(null);
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', username: '', password: '' });
@@ -53,6 +54,8 @@ export default function App() {
   const [prompt, setPrompt] = useState('');
   const [pendingApproval, setPendingApproval] = useState(false);
   const [latestGeneration, setLatestGeneration] = useState(null);
+  const [generationJobs, setGenerationJobs] = useState([]);
+  const [generationSubmitting, setGenerationSubmitting] = useState(false);
 
   const [postedVideos, setPostedVideos] = useState([]);
   const [followers, setFollowers] = useState([]);
@@ -127,12 +130,19 @@ export default function App() {
   }, [latestGeneration]);
 
   const generationLocked = useMemo(() => {
-    if (pendingApproval) return true;
-    if (!latestGeneration) return false;
-    const status = latestGeneration.status;
-    if (!status) return true;
-    return status !== 'SUCCEEDED' && status !== 'FAILED';
-  }, [latestGeneration, pendingApproval]);
+    if (generationSubmitting) return true;
+    return generationJobs.some((job) => job?.status === 'QUEUED' || job?.status === 'RUNNING');
+  }, [generationJobs, generationSubmitting]);
+
+  const draftGenerations = useMemo(() => {
+    return generationJobs
+      .filter((job) => job?.status === 'SUCCEEDED' && !job?.published_video_id)
+      .sort((a, b) => {
+        const aTime = a?.updated_at ? Date.parse(a.updated_at) : 0;
+        const bTime = b?.updated_at ? Date.parse(b.updated_at) : 0;
+        return bTime - aTime;
+      });
+  }, [generationJobs]);
 
   useEffect(() => {
     if (token) {
@@ -141,6 +151,12 @@ export default function App() {
       localStorage.removeItem('genvid_token');
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!token && activeTab !== 'profile') {
+      setActiveTab('profile');
+    }
+  }, [token, activeTab]);
 
   useEffect(() => {
     if (!notice && !error) return undefined;
@@ -167,6 +183,23 @@ export default function App() {
     setFollowedUsers(map);
   }, [following]);
 
+  const fetchPreviewUrls = useCallback(async (jobId) => {
+    if (!token || !jobId) return;
+    try {
+      const preview = await api.getPreviewUrls(token, jobId);
+      setLatestGeneration((prev) => {
+        if (prev && prev.id && prev.id !== jobId) return prev;
+        return {
+          ...prev,
+          preview_video_url: preview?.preview_video_url || prev?.preview_video_url,
+          preview_thumbnail_url: preview?.preview_thumbnail_url || prev?.preview_thumbnail_url
+        };
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) return undefined;
 
@@ -175,23 +208,7 @@ export default function App() {
     const controller = new AbortController();
 
     const baseUrl = API_BASE || `${window.location.protocol}//${window.location.host}`;
-    const eventsUrl = `${baseUrl}/events/video-generation`;
-
-    const fetchPreviewUrls = async (jobId) => {
-      try {
-        const preview = await api.getPreviewUrls(token, jobId);
-        setLatestGeneration((prev) => {
-          if (prev && prev.id && prev.id !== jobId) return prev;
-          return {
-            ...prev,
-            preview_video_url: preview?.preview_video_url || prev?.preview_video_url,
-            preview_thumbnail_url: preview?.preview_thumbnail_url || prev?.preview_thumbnail_url
-          };
-        });
-      } catch (err) {
-        setError(err.message);
-      }
-    };
+    const eventsUrl = `${baseUrl.replace(/\/+$/, '')}/events/video-generation?token=${encodeURIComponent(token)}`;
 
     const handleGenerationUpdate = (job) => {
       if (!job?.id) return;
@@ -217,7 +234,9 @@ export default function App() {
       generationNoticeRef.current = { id: job.id, status: job.status };
 
       if (job.status === 'SUCCEEDED') {
-        setPendingApproval(true);
+        if (!job.published_video_id) {
+          setPendingApproval(true);
+        }
         setMessages((prev) => [
           buildMessage('assistant', `Draft ready (id ${job.id}). Preview below. Publish now?`),
           ...prev
@@ -236,7 +255,6 @@ export default function App() {
       try {
         const response = await fetch(eventsUrl, {
           headers: {
-            Authorization: `Bearer ${token}`,
             Accept: 'text/event-stream'
           },
           signal: controller.signal
@@ -275,7 +293,13 @@ export default function App() {
 
             try {
               const jobs = JSON.parse(dataLines.join('\n'));
-              if (!Array.isArray(jobs) || jobs.length === 0) continue;
+              if (!Array.isArray(jobs)) continue;
+
+              if (!cancelled) {
+                setGenerationJobs(jobs);
+              }
+
+              if (jobs.length === 0) continue;
 
               const currentId = latestGeneration?.id;
               const job = currentId
@@ -302,7 +326,7 @@ export default function App() {
       controller.abort();
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
-  }, [token, latestGeneration?.id]);
+  }, [token, latestGeneration?.id, fetchPreviewUrls]);
 
   useEffect(() => {
     if (!token) {
@@ -409,10 +433,13 @@ export default function App() {
       const data = await api.getMyVideos(authToken);
       const items = Array.isArray(data) ? data : (data?.videos || []);
       const mapped = items.map((video) => {
-        const src = video.video_url || video.processed_path || video.source_path || '';
+        const directUrl = video.video_url || '';
+        const fallbackSrc = video.processed_path || video.source_path || '';
+        const src = directUrl || buildGeneratedVideoUrl(fallbackSrc);
         return {
           id: video.id,
-          src: buildGeneratedVideoUrl(src)
+          src,
+          poster: video.thumbnail_url || ''
         };
       });
       setPostedVideos(mapped);
@@ -453,6 +480,10 @@ export default function App() {
     setProfileForm({ username: '', bio: '' });
     setProfilePicFile(null);
     setProfilePicPreview('');
+    setLatestGeneration(null);
+    setGenerationJobs([]);
+    setPendingApproval(false);
+    setActiveTab('profile');
     setNotice('Logged out.');
   }
 
@@ -619,7 +650,7 @@ export default function App() {
   }
 
   async function handleGenerate() {
-    if (generationLocked) return;
+    if (generationLocked || generationSubmitting) return;
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
@@ -634,6 +665,7 @@ export default function App() {
       return;
     }
 
+    setGenerationSubmitting(true);
     try {
       const generation = await api.createGeneration(token, { prompt: trimmed });
       const jobId = generation?.job_id;
@@ -641,7 +673,20 @@ export default function App() {
       if (jobId) {
         generationNoticeRef.current = { id: jobId, status: null };
       }
-      setLatestGeneration(jobId ? { id: jobId, status } : generation);
+      if (jobId) {
+        const nextJob = {
+          id: jobId,
+          status,
+          prompt: trimmed
+        };
+        setLatestGeneration(nextJob);
+        setGenerationJobs((prev) => {
+          const filtered = prev.filter((job) => job.id !== jobId);
+          return [nextJob, ...filtered];
+        });
+      } else {
+        setLatestGeneration(generation);
+      }
       setPendingApproval(false);
       setMessages((prev) => [
         buildMessage('assistant', `Draft queued (id ${jobId ?? 'unknown'}). I'll notify you when it is ready.`),
@@ -652,11 +697,27 @@ export default function App() {
         buildMessage('assistant', `Error: ${err.message}`),
         ...prev
       ]);
+    } finally {
+      setGenerationSubmitting(false);
     }
   }
 
+  const handleSelectDraft = useCallback((job) => {
+    if (!job) return;
+    generationNoticeRef.current = { id: job.id, status: job.status };
+    setLatestGeneration((prev) => ({
+      ...prev,
+      ...job
+    }));
+    if (job.status === 'SUCCEEDED' && !job.published_video_id) {
+      setPendingApproval(true);
+      fetchPreviewUrls(job.id);
+    } else {
+      setPendingApproval(false);
+    }
+  }, [fetchPreviewUrls]);
+
   async function handleApprove(approved) {
-    if (!pendingApproval) return;
     setPendingApproval(false);
 
     if (!approved) {
@@ -683,9 +744,38 @@ export default function App() {
       return;
     }
 
+    if (latestGeneration?.published_video_id) {
+      setMessages((prev) => [
+        buildMessage('assistant', 'That draft is already published.'),
+        ...prev
+      ]);
+      return;
+    }
+
+    if (latestGeneration?.status !== 'SUCCEEDED') {
+      setMessages((prev) => [
+        buildMessage('assistant', 'That draft is not ready to publish yet.'),
+        ...prev
+      ]);
+      return;
+    }
+
     try {
       const result = await api.publishVideo(token, latestGeneration.id);
       const videoId = result?.video_id ?? result?.id;
+      if (videoId) {
+        setLatestGeneration((prev) => ({
+          ...prev,
+          published_video_id: videoId
+        }));
+        setGenerationJobs((prev) =>
+          prev.map((job) =>
+            job.id === latestGeneration.id
+              ? { ...job, published_video_id: videoId }
+              : job
+          )
+        );
+      }
       if (videoId) {
         setPostedVideos((prev) => [{ id: videoId, src: previewUrl || '' }, ...prev]);
       }
@@ -812,6 +902,8 @@ export default function App() {
           generationStatus={latestGeneration?.status}
           isLocked={generationLocked}
           isAuthed={isAuthed}
+          draftGenerations={draftGenerations}
+          onSelectDraft={handleSelectDraft}
           onPromptChange={setPrompt}
           onGenerate={handleGenerate}
           onApprove={handleApprove}

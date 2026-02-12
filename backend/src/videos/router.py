@@ -32,6 +32,7 @@ def publish_generation(
     video = Video(
         user_id=user.id,
         caption=job.prompt,
+        source_path=job.preview_video_path,
         processed_path=job.preview_video_path,
         thumbnail_path=job.preview_thumbnail_path,
         status=VideoStatus.READY,

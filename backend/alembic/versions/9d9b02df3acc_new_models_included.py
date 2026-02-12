@@ -36,7 +36,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('prompt', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('status', sa.Enum('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED' name='generationstatus'), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', name='generationstatus'), nullable=False),
     sa.Column('preview_video_path', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('preview_thumbnail_path', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('error_message', sqlmodel.sql.sqltypes.AutoString(), nullable=True),

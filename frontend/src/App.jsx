@@ -407,10 +407,14 @@ export default function App() {
     if (!authToken) return;
     try {
       const data = await api.getMyVideos(authToken);
-      const mapped = (data || []).map((video) => ({
-        id: video.id,
-        src: video.video_url || ''
-      }));
+      const items = Array.isArray(data) ? data : (data?.videos || []);
+      const mapped = items.map((video) => {
+        const src = video.video_url || video.processed_path || video.source_path || '';
+        return {
+          id: video.id,
+          src: buildGeneratedVideoUrl(src)
+        };
+      });
       setPostedVideos(mapped);
     } catch (err) {
       setError(err.message);

@@ -18,5 +18,6 @@ authlib
 google-cloud-pubsub
 google-cloud-run
 google-cloud-storage
+google-auth
 numpy
 imageio

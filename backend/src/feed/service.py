@@ -1,5 +1,6 @@
 from sqlmodel import Session, select
 from sqlalchemy import func, case
+from typing import Optional
 
 from src.feed.schema import FeedSchema, FeedItemSchema
 from src.user_interactions.models import Like
@@ -7,6 +8,27 @@ from src.videos.models import Video
 from src.auth.models import User
 from src.auth.utils import get_current_user
 from src.db import get_session
+from src.gcp.storage import signed_get_url
+from src.config import get_settings
+
+
+def _signed_media_url(path: Optional[str], minutes: int = 30) -> Optional[str]:
+    if not path:
+        return None
+    if path.startswith("http://") or path.startswith("https://"):
+        return path
+    if path.startswith("gs://"):
+        trimmed = path[len("gs://"):]
+        bucket, _, object_name = trimmed.partition("/")
+        if bucket and object_name:
+            return signed_get_url(bucket, object_name, minutes=minutes)
+    settings = get_settings()
+    object_name = path.lstrip("/")
+    if settings.GCS_BUCKET_NAME and object_name:
+        path = signed_get_url(settings.GCS_BUCKET_NAME, object_name, minutes=minutes)
+        print(f"Generated signed URL for {path}: {path}")
+        return path
+    return path
 
 
 def get_feed_videos(
@@ -27,6 +49,7 @@ def get_feed_videos(
         select(
             Video.id.label("video_id"),
             Video.caption,
+            Video.source_path,
             Video.processed_path.label("video_url"),
             Video.thumbnail_path.label("thumbnail_url"),
             Video.likes_count,
@@ -58,8 +81,8 @@ def get_feed_videos(
             owner_username=row.owner_username,
             owner_profile_pic=row.owner_profile_pic,
             caption=row.caption,
-            video_url=row.video_url,
-            thumbnail_url=row.thumbnail_url,
+            video_url=_signed_media_url(row.source_path),
+            thumbnail_url=_signed_media_url(row.thumbnail_url),
             likes_count=row.likes_count,
             comments_count=row.comments_count,
             is_liked_by_user=row.is_liked_by_user,

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     GCS_BUCKET_NAME: str
     GCP_PROJECT_ID: str
     GCP_PUBSUB_VIDEO_GEN_TOPIC: str
+    SA_KEY_PATH: str
 
     class Config:
         env_file = ".env"

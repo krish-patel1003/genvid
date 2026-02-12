@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 export default function ProfileView({
   isAuthed,
   user,
+  profileLoading = false,
   postedVideos,
   followers,
   following,
@@ -93,6 +94,17 @@ export default function ProfileView({
               <a href={googleUrl}>Continue with Google</a>
             </div>
           </form>
+        </div>
+      </main>
+    );
+  }
+
+  if (profileLoading || !user) {
+    return (
+      <main className="profile-view">
+        <div className="auth-panel">
+          <div className="grid-header">Loading profile...</div>
+          <p className="muted-text">Fetching your account details.</p>
         </div>
       </main>
     );

@@ -30,6 +30,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(initialToken ? 'feed' : 'profile');
   const [token, setToken] = useState(() => initialToken);
   const [user, setUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', username: '', password: '' });
   const [authError, setAuthError] = useState('');
@@ -66,7 +67,7 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
-  const isAuthed = useMemo(() => Boolean(token), [token]);
+  const isAuthed = useMemo(() => Boolean(token && (userLoading || user?.id)), [token, user?.id, userLoading]);
   const followedUsernames = useMemo(() => {
     const names = new Set();
     following.forEach((profile) => {
@@ -393,6 +394,7 @@ export default function App() {
   }, [user?.id]);
 
   async function loadUser(authToken) {
+    setUserLoading(true);
     try {
       const data = await api.me(authToken);
       setUser(data);
@@ -403,8 +405,19 @@ export default function App() {
       if (!profilePicFile) {
         setProfilePicPreview(data?.profile_pic || '');
       }
+      setAuthError('');
     } catch (err) {
-      setError(err.message);
+      const message = err.message || '';
+      const isAuthError = /invalid token|user not found|unauthorized|401/i.test(message);
+      if (isAuthError) {
+        setToken('');
+        setAuthError('Session expired. Please sign in again.');
+      } else {
+        setError(message);
+      }
+      setUser(null);
+    } finally {
+      setUserLoading(false);
     }
   }
 
@@ -477,6 +490,7 @@ export default function App() {
   function handleLogout() {
     setToken('');
     setUser(null);
+    setUserLoading(false);
     setProfileForm({ username: '', bio: '' });
     setProfilePicFile(null);
     setProfilePicPreview('');
@@ -914,6 +928,7 @@ export default function App() {
         <ProfileView
           isAuthed={isAuthed}
           user={user}
+          profileLoading={userLoading && !user}
           postedVideos={postedVideos}
           followers={followers}
           following={following}

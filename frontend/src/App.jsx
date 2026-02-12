@@ -67,6 +67,29 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    let nextToken = params.get('token') || params.get('access_token') || '';
+
+    if (!nextToken && url.hash) {
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+      nextToken = hashParams.get('token') || hashParams.get('access_token') || '';
+    }
+
+    if (nextToken) {
+      setToken(nextToken);
+      setActiveTab('profile');
+      setNotice('Signed in with Google.');
+
+      params.delete('token');
+      params.delete('access_token');
+      url.hash = '';
+      const cleaned = `${url.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.history.replaceState({}, document.title, cleaned);
+    }
+  }, []);
+
   const isAuthed = useMemo(() => Boolean(token && (userLoading || user?.id)), [token, user?.id, userLoading]);
   const followedUsernames = useMemo(() => {
     const names = new Set();

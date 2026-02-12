@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
+from datetime import datetime, timezone
+from sqlmodel import select, func
 
 from src.auth.utils import get_current_user
 from src.db import get_session
@@ -12,9 +14,10 @@ from src.videos.generation.schema import (
 )
 from src.videos.models import VideoGenerationJob as VideoGenerationJobModel
 
+
 router = APIRouter(prefix="/video-generation", tags=["video-generation"])
 
-# TODO: add rate limiting
+MAX_GENERATIONS_PER_DAY = 2
 # TODO: validate prompt length
 @router.post("/generate", response_model=VideoGenerationResponse)
 def generate(
@@ -22,6 +25,30 @@ def generate(
     session: Session = Depends(get_session),
     current_user=Depends(get_current_user),
 ):
+    # Check if user has exceeded daily generation limit
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    count = session.exec(
+        select(func.count())
+        .where(
+            VideoGenerationJobModel.user_id == current_user.id,
+            VideoGenerationJobModel.created_at >= today_start,
+        )
+    ).one()
+
+    if count >= MAX_GENERATIONS_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily generation limit reached (2 per day)."
+        )
+
+    if count >= MAX_GENERATIONS_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily generation limit reached (2 per day)."
+        )
+
     job = VideoGenerationJobModel(
         user_id=current_user.id,
         prompt=data.prompt,

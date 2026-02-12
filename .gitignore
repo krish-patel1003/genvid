@@ -117,3 +117,8 @@ temp/
 *.backup
 *.swp
 *.swo
+
+# Environment overrides
+env.prod.yaml
+backend/env.prod.yaml
+../backend/env.prod.yaml

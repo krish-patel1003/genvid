@@ -38,11 +38,20 @@ def create_app() -> FastAPI:
     # def on_startup():
     #     create_db_and_tables()
 
-    app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+    session_kwargs = {
+        "secret_key": settings.SECRET_KEY,
+    }
+    if settings.ENV.lower() in {"production", "prod"} or not settings.DEBUG:
+        session_kwargs.update({
+            "same_site": "none",
+            "https_only": True,
+        })
+    app.add_middleware(SessionMiddleware, **session_kwargs)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*", 'localhost:5173'],          # allow all origins
+        # allow_origins=["*", 'localhost:5173'],          # allow all origins
+        allow_origins=["https://genvid-ff47i3km7-krish-patels-projects-d8261602.vercel.app", "https://genvid.krish-patel.dev", "http://localhost:5173"],          # allow all origins
         allow_credentials=True,
         allow_methods=["*"],          # allow all HTTP methods
         allow_headers=["*"],          # allow all headers

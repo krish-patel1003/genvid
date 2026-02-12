@@ -9,6 +9,7 @@ from src.auth.password import hash_password, verify_password
 from src.security import create_access_token
 from src.auth.utils import get_current_user
 from src.auth.google_oauth import google
+from src.config import get_settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,7 +57,9 @@ def login_for_access_token(
 
 @router.get("/google/login")
 async def google_login(request: Request):
-    redirect_uri = request.url_for("google_callback")
+    settings = get_settings()
+    base_url = settings.SERVICE_URL.rstrip("/")
+    redirect_uri = f"{base_url}/auth/google/callback"
     return await google.authorize_redirect(request, redirect_uri)
 
 

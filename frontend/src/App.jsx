@@ -13,6 +13,10 @@ const buildMessage = (role, text) => ({
   text
 });
 
+const buildInitialMessages = () => ([
+  buildMessage('assistant', 'Describe the vibe, action, and duration. I will draft a short video.')
+]);
+
 const API_BASE = import.meta.env.VITE_API_BASE
   || 'https://genvid-backend-286573941342.us-central1.run.app';
 
@@ -49,9 +53,7 @@ export default function App() {
   const [replyTargets, setReplyTargets] = useState({});
   const [commentsByVideo, setCommentsByVideo] = useState({});
 
-  const [messages, setMessages] = useState([
-    buildMessage('assistant', 'Describe the vibe, action, and duration. I will draft a short video.')
-  ]);
+  const [messages, setMessages] = useState(() => buildInitialMessages());
   const [prompt, setPrompt] = useState('');
   const [pendingApproval, setPendingApproval] = useState(false);
   const [latestGeneration, setLatestGeneration] = useState(null);
@@ -67,6 +69,11 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  const resetChat = useCallback(() => {
+    setMessages(buildInitialMessages());
+    setPrompt('');
+  }, []);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const params = url.searchParams;
@@ -81,6 +88,7 @@ export default function App() {
       setToken(nextToken);
       setActiveTab('profile');
       setNotice('Signed in with Google.');
+      resetChat();
 
       params.delete('token');
       params.delete('access_token');
@@ -88,7 +96,7 @@ export default function App() {
       const cleaned = `${url.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
       window.history.replaceState({}, document.title, cleaned);
     }
-  }, []);
+  }, [resetChat]);
 
   const isAuthed = useMemo(() => Boolean(token && (userLoading || user?.id)), [token, user?.id, userLoading]);
   const followedUsernames = useMemo(() => {
@@ -504,6 +512,7 @@ export default function App() {
         });
         setToken(data.access_token);
       }
+      resetChat();
       setNotice('Signed in successfully.');
     } catch (err) {
       setAuthError(err.message);
@@ -521,6 +530,7 @@ export default function App() {
     setGenerationJobs([]);
     setPendingApproval(false);
     setActiveTab('profile');
+    resetChat();
     setNotice('Logged out.');
   }
 
@@ -756,44 +766,30 @@ export default function App() {
 
   async function handleApprove(approved) {
     setPendingApproval(false);
+    resetChat();
 
     if (!approved) {
-      setMessages((prev) => [
-        buildMessage('assistant', 'No worries, saved as a draft.'),
-        ...prev
-      ]);
+      setNotice('Saved as a draft.');
       return;
     }
 
     if (!token) {
-      setMessages((prev) => [
-        buildMessage('assistant', 'Sign in to publish videos.'),
-        ...prev
-      ]);
+      setError('Sign in to publish videos.');
       return;
     }
 
     if (!latestGeneration?.id) {
-      setMessages((prev) => [
-        buildMessage('assistant', 'No generation available to publish.'),
-        ...prev
-      ]);
+      setError('No generation available to publish.');
       return;
     }
 
     if (latestGeneration?.published_video_id) {
-      setMessages((prev) => [
-        buildMessage('assistant', 'That draft is already published.'),
-        ...prev
-      ]);
+      setNotice('That draft is already published.');
       return;
     }
 
     if (latestGeneration?.status !== 'SUCCEEDED') {
-      setMessages((prev) => [
-        buildMessage('assistant', 'That draft is not ready to publish yet.'),
-        ...prev
-      ]);
+      setNotice('That draft is not ready to publish yet.');
       return;
     }
 
@@ -816,17 +812,11 @@ export default function App() {
       if (videoId) {
         setPostedVideos((prev) => [{ id: videoId, src: previewUrl || '' }, ...prev]);
       }
-      setMessages((prev) => [
-        buildMessage('assistant', 'Posting now. Your reel is live.'),
-        ...prev
-      ]);
+      setNotice('Posting now. Your reel is live.');
       setPendingApproval(false);
       loadFeed(token);
     } catch (err) {
-      setMessages((prev) => [
-        buildMessage('assistant', `Publish failed: ${err.message}`),
-        ...prev
-      ]);
+      setError(`Publish failed: ${err.message}`);
     }
   }
 

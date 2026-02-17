@@ -122,3 +122,4 @@ temp/
 env.prod.yaml
 backend/env.prod.yaml
 commands.md
+!demo/*

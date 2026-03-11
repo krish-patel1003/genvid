@@ -3,6 +3,7 @@ import json
 import time
 import logging
 import tempfile
+from pathlib import Path
 import psycopg2
 from google import genai
 from google.genai import types
@@ -68,11 +69,55 @@ def mark_failed(conn, job_id, error_message):
     conn.commit()
 
 
+def fetch_job_input(conn, job_id: int) -> tuple[str, list[str]]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT prompt, reference_image_paths
+            FROM video_generation_jobs
+            WHERE id=%s
+            """,
+            (job_id,),
+        )
+        row = cur.fetchone()
+
+    if not row:
+        raise RuntimeError(f"Job not found: {job_id}")
+
+    prompt, reference_image_paths = row
+    if reference_image_paths is None:
+        reference_image_paths = []
+    elif isinstance(reference_image_paths, str):
+        reference_image_paths = json.loads(reference_image_paths)
+
+    return prompt, list(reference_image_paths)
+
+
 # ---------------------------
 # Veo Generation
 # ---------------------------
 
-def generate_with_veo(prompt: str, duration_seconds: int = 4) -> str:
+def _build_reference_images(reference_local_files: list[str] | None):
+    if not reference_local_files:
+        return None
+
+    references = []
+    for local_path in reference_local_files:
+        image = types.Image.from_file(location=local_path)
+        references.append(
+            types.VideoGenerationReferenceImage(
+                image=image,
+                reference_type=types.VideoGenerationReferenceType.ASSET,
+            )
+        )
+    return references
+
+
+def generate_with_veo(
+    prompt: str,
+    duration_seconds: int = 4,
+    reference_local_files: list[str] | None = None,
+) -> str:
     logging.info("Starting Veo generation")
 
     client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -85,6 +130,7 @@ def generate_with_veo(prompt: str, duration_seconds: int = 4) -> str:
             resolution="720p",
             duration_seconds=duration_seconds,
             person_generation="allow_all",
+            reference_images=_build_reference_images(reference_local_files),
         ),
     )
 
@@ -125,6 +171,36 @@ def upload_to_gcs(job_id: int, local_path: str) -> str:
     return object_name
 
 
+def download_reference_images(reference_image_paths: list[str]) -> list[str]:
+    if not reference_image_paths:
+        return []
+
+    client = storage.Client()
+    bucket = client.bucket(GCS_BUCKET)
+    local_paths: list[str] = []
+
+    for object_name in reference_image_paths:
+        normalized = object_name
+        if object_name.startswith("gs://"):
+            trimmed = object_name[5:]
+            bucket_name, _, normalized_object = trimmed.partition("/")
+            if bucket_name and bucket_name != GCS_BUCKET:
+                raise RuntimeError(
+                    f"Reference image bucket mismatch: expected {GCS_BUCKET}, got {bucket_name}"
+                )
+            normalized = normalized_object
+
+        suffix = Path(normalized).suffix or ".jpg"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            local_path = tmp.name
+
+        blob = bucket.blob(normalized)
+        blob.download_to_filename(local_path)
+        local_paths.append(local_path)
+
+    return local_paths
+
+
 # ---------------------------
 # Main Entry
 # ---------------------------
@@ -145,16 +221,30 @@ def main():
     logging.info(f"Received prompt: {args.prompt}")
 
     job_id = args.job_id
-    prompt = args.prompt
+    if not job_id:
+        raise RuntimeError("Missing required --job_id")
 
     conn = get_conn()
+    local_reference_files: list[str] = []
+    local_clip: str | None = None
 
     try:
         logging.info(f"Processing job {job_id}")
 
         mark_running(conn, job_id)
 
-        local_clip = generate_with_veo(prompt, duration_seconds=4)
+        prompt_from_db, reference_image_paths = fetch_job_input(conn, job_id)
+        prompt = args.prompt or prompt_from_db
+        if not prompt:
+            raise RuntimeError("Prompt is missing for job")
+
+        local_reference_files = download_reference_images(reference_image_paths)
+
+        local_clip = generate_with_veo(
+            prompt,
+            duration_seconds=4,
+            reference_local_files=local_reference_files,
+        )
 
         preview_path = upload_to_gcs(job_id, local_clip)
 
@@ -167,6 +257,16 @@ def main():
         mark_failed(conn, job_id, str(e))
 
     finally:
+        if local_clip:
+            try:
+                os.remove(local_clip)
+            except OSError:
+                pass
+        for path in local_reference_files:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
         conn.close()
 
 

@@ -52,7 +52,36 @@ export const api = {
   login: (payload) => apiRequest("/auth/token", { method: "POST", form: payload }),
   me: (token) => apiRequest("/users/me", { token }),
   updateMe: (token, payload) => apiRequest("/users/me", { method: "PATCH", token, body: payload }),
-  createGeneration: (token, payload) => apiRequest("/video-generation/generate", { method: "POST", token, body: payload }),
+  createGeneration: async (token, payload) => {
+    const formData = new FormData();
+    formData.append("prompt", payload?.prompt || "");
+    (payload?.referenceImages || []).forEach((file) => {
+      formData.append("reference_images", file);
+    });
+
+    const headers = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}/video-generation/generate`, {
+      method: "POST",
+      headers,
+      body: formData
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const detail = typeof data === "string" ? data : data?.detail;
+      throw new Error(detail || `Request failed (${response.status})`);
+    }
+
+    return data;
+  },
   getGeneration: (token, jobId) => apiRequest(`/video-generation/${jobId}`, { token }),
   getPreviewUrls: (token, jobId) => apiRequest(`/videos/${jobId}/preview-urls`, { token }),
   publishVideo: (token, jobId) => apiRequest(`/videos/${jobId}/publish`, { method: "POST", token }),

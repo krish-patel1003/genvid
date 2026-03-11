@@ -38,6 +38,7 @@ async def video_generation_events(token: str = Query(...)):
                         "id": j.id,
                         "status": j.status,
                         "prompt": j.prompt,
+                        "reference_image_paths": j.reference_image_paths or [],
                         "preview_video_path": j.preview_video_path,
                         "preview_thumbnail_path": j.preview_thumbnail_path,
                         "error_message": j.error_message,

@@ -10,7 +10,10 @@ export default function CreateView({
   isLocked,
   isAuthed,
   draftGenerations = [],
+  referenceImages = [],
   onSelectDraft,
+  onReferenceImagesChange,
+  onRemoveReferenceImage,
   onPromptChange,
   onGenerate,
   onApprove
@@ -65,6 +68,37 @@ export default function CreateView({
           <button type="button" onClick={onGenerate} disabled={isDisabled || !canSubmit}>
             Generate
           </button>
+        </div>
+        <div className="reference-input-wrap">
+          <label htmlFor="reference-images" className="reference-label">Reference images (up to 3)</label>
+          <input
+            id="reference-images"
+            className="reference-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            disabled={isDisabled}
+            onChange={(event) => {
+              onReferenceImagesChange?.(event.target.files);
+              event.target.value = '';
+            }}
+          />
+          {referenceImages.length > 0 && (
+            <div className="reference-list">
+              {referenceImages.map((file, index) => (
+                <div key={`${file.name}-${file.size}-${index}`} className="reference-item">
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveReferenceImage?.(index)}
+                    disabled={isDisabled}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -14,6 +14,7 @@ class VideoGenerationJob(BaseModel):
     id: int
     user_id: int
     prompt: str
+    reference_image_paths: list[str] = Field(default_factory=list)
     status: str
     created_at: datetime
     updated_at: datetime

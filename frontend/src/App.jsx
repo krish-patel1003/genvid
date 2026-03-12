@@ -59,6 +59,7 @@ export default function App() {
   const [latestGeneration, setLatestGeneration] = useState(null);
   const [generationJobs, setGenerationJobs] = useState([]);
   const [generationSubmitting, setGenerationSubmitting] = useState(false);
+  const [referenceImages, setReferenceImages] = useState([]);
 
   const [postedVideos, setPostedVideos] = useState([]);
   const [followers, setFollowers] = useState([]);
@@ -528,6 +529,7 @@ export default function App() {
     setProfilePicPreview('');
     setLatestGeneration(null);
     setGenerationJobs([]);
+    setReferenceImages([]);
     setPendingApproval(false);
     setActiveTab('profile');
     resetChat();
@@ -714,7 +716,10 @@ export default function App() {
 
     setGenerationSubmitting(true);
     try {
-      const generation = await api.createGeneration(token, { prompt: trimmed });
+      const generation = await api.createGeneration(token, {
+        prompt: trimmed,
+        referenceImages
+      });
       const jobId = generation?.job_id;
       const status = generation?.status;
       if (jobId) {
@@ -735,6 +740,7 @@ export default function App() {
         setLatestGeneration(generation);
       }
       setPendingApproval(false);
+      setReferenceImages([]);
       setMessages((prev) => [
         buildMessage('assistant', `Draft queued (id ${jobId ?? 'unknown'}). I'll notify you when it is ready.`),
         ...prev
@@ -763,6 +769,19 @@ export default function App() {
       setPendingApproval(false);
     }
   }, [fetchPreviewUrls]);
+
+  const handleReferenceImagesChange = useCallback((files) => {
+    const selected = Array.from(files || []);
+    if (selected.length > 3) {
+      setError('You can upload up to 3 reference images.');
+    }
+    const next = selected.slice(0, 3);
+    setReferenceImages(next);
+  }, []);
+
+  const handleRemoveReferenceImage = useCallback((index) => {
+    setReferenceImages((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
+  }, []);
 
   async function handleApprove(approved) {
     setPendingApproval(false);
@@ -930,7 +949,10 @@ export default function App() {
           isLocked={generationLocked}
           isAuthed={isAuthed}
           draftGenerations={draftGenerations}
+          referenceImages={referenceImages}
           onSelectDraft={handleSelectDraft}
+          onReferenceImagesChange={handleReferenceImagesChange}
+          onRemoveReferenceImage={handleRemoveReferenceImage}
           onPromptChange={setPrompt}
           onGenerate={handleGenerate}
           onApprove={handleApprove}

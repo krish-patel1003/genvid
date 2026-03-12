@@ -52,6 +52,10 @@ class VideoGenerationJob(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.id", index=True)
 
     prompt: str
+    reference_image_paths: list[str] = Field(
+        default_factory=list,
+        sa_column=sa.Column(sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),
+    )
 
     status: GenerationStatus = Field(default=GenerationStatus.QUEUED, index=True)
 

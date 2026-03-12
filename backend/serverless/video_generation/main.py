@@ -67,7 +67,6 @@ def trigger_gpu_job(payload: dict):
                 run_v2.RunJobRequest.Overrides.ContainerOverride(
                     args=[
                         "--job_id", str(payload["job_id"]),
-                        "--prompt", payload["prompt"],
                     ]
                 )
             ]

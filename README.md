@@ -157,6 +157,14 @@ No dependency on backend source code.
 previews/{job_id}/preview_timestamp.mp4
 ```
 
+* Reference images for generation are stored under:
+
+```
+references/{user_id}/{job_id}/...
+```
+
+* `references/` objects should be configured with a 2-day lifecycle delete policy
+
 * Signed URLs generated at read-time (not stored in DB)
 * IAM-based signing (no private keys)
 

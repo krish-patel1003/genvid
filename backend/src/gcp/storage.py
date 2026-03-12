@@ -1,9 +1,9 @@
-import os
 import google.auth
 from google.auth.transport import requests
 from google.auth import compute_engine
 from datetime import datetime, timedelta
 from google.cloud import storage
+from fastapi import UploadFile
 
 
 def signed_get_url(bucket_name: str, object_name: str, minutes: int = 30):
@@ -32,3 +32,24 @@ def signed_get_url(bucket_name: str, object_name: str, minutes: int = 30):
     )
 
     return signed_url
+
+
+def upload_upload_file_to_bucket(
+    *,
+    bucket_name: str,
+    destination_blob_name: str,
+    file: UploadFile,
+) -> str:
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    file.file.seek(0)
+    blob.upload_from_file(file.file, content_type=file.content_type)
+    return destination_blob_name
+
+
+def delete_object(bucket_name: str, object_name: str) -> None:
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(object_name)
+    blob.delete()

@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         # allow_origins=["*", 'localhost:5173'],          # allow all origins
-        allow_origins=["https://genvid-ff47i3km7-krish-patels-projects-d8261602.vercel.app", "https://genvid.krish-patel.dev", "http://localhost:5173"],          # allow all origins
+        allow_origins=["https://genvid-ff47i3km7-krish-patels-projects-d8261602.vercel.app", "https://genvid.krish-patel.dev", "http://localhost:5173", "https://github.com/krish-patel1003/genvid/tree/image-to-vid-feature"],          # allow all origins
         allow_credentials=True,
         allow_methods=["*"],          # allow all HTTP methods
         allow_headers=["*"],          # allow all headers

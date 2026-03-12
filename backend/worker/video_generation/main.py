@@ -120,18 +120,26 @@ def generate_with_veo(
 ) -> str:
     logging.info("Starting Veo generation")
 
+    normalized_prompt = (prompt or "").strip()
+    if not normalized_prompt:
+        raise RuntimeError("Prompt is empty after trimming whitespace")
+
     client = genai.Client(api_key=GOOGLE_API_KEY)
+
+    config_kwargs = {
+        "aspect_ratio": "9:16",  # mobile vertical
+        # "resolution": "720p",
+        # "duration_seconds": duration_seconds,
+        # "person_generation": "allow_all",
+    }
+    reference_images = _build_reference_images(reference_local_files)
+    if reference_images:
+        config_kwargs["reference_images"] = reference_images
 
     operation = client.models.generate_videos(
         model="veo-3.1-generate-preview",
-        prompt=prompt,
-        config=types.GenerateVideosConfig(
-            aspect_ratio="9:16",  # mobile vertical
-            resolution="720p",
-            duration_seconds=duration_seconds,
-            person_generation="allow_all",
-            reference_images=_build_reference_images(reference_local_files),
-        ),
+        prompt=normalized_prompt,
+        config=types.GenerateVideosConfig(**config_kwargs),
     )
 
     while not operation.done:
@@ -234,7 +242,7 @@ def main():
         mark_running(conn, job_id)
 
         prompt_from_db, reference_image_paths = fetch_job_input(conn, job_id)
-        prompt = args.prompt or prompt_from_db
+        prompt = (args.prompt or prompt_from_db or "").strip()
         if not prompt:
             raise RuntimeError("Prompt is missing for job")
 
